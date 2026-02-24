@@ -271,12 +271,12 @@
         }
         
         // 关闭导出类型选择弹窗
-        function closeExportTypeModal() {
+        window.closeExportTypeModal = function() {
             document.getElementById('exportTypeModal').style.display = 'none';
         }
         
         // 执行导出
-        async function doExport(exportType) {
+        window.doExport = async function(exportType) {
             closeExportTypeModal();
             
             const params = getQueryParams();
@@ -310,18 +310,18 @@
         }
         
         // 打开导出任务弹窗
-        function openExportModal() {
+        window.openExportModal = function() {
             document.getElementById('exportModal').style.display = 'block';
             refreshExportTasks();
         }
         
         // 关闭导出任务弹窗
-        function closeExportModal() {
+        window.closeExportModal = function() {
             document.getElementById('exportModal').style.display = 'none';
         }
         
         // 刷新导出任务列表
-        async function refreshExportTasks() {
+        window.refreshExportTasks = async function() {
             const listEl = document.getElementById('exportTasksList');
             listEl.innerHTML = '加载中...';
             
@@ -386,7 +386,7 @@
         }
         
         // 下载导出文件
-        function downloadExport(taskId) {
+        window.downloadExport = function(taskId) {
             window.open(`${API_BASE_URL}/exports/download/${taskId}`, '_blank');
         }
         
@@ -529,7 +529,7 @@
         }
         
         // 查看订单详情
-        async function viewDetail(orderNumber) {
+        window.viewDetail = async function(orderNumber) {
             document.getElementById('detailModal').style.display = 'block';
             const contentEl = document.getElementById('orderDetailContent');
             contentEl.innerHTML = '加载中...';
@@ -629,7 +629,7 @@
         }
         
         // 关闭详情弹窗
-        function closeDetailModal() {
+        window.closeDetailModal = function() {
             document.getElementById('detailModal').style.display = 'none';
         }
         
@@ -651,7 +651,7 @@
         }
         
         // ========== 报表切换 ==========
-        function showReport(reportType) {
+        window.showReport = function(reportType) {
             // 更新导航状态
             document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
             document.getElementById('nav-' + reportType).classList.add('active');
