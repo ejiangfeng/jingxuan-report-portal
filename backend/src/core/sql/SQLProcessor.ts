@@ -1,0 +1,552 @@
+import fs from 'fs/promises'
+import path from 'path'
+import { logger } from '../../utils/logger'
+import { QueryParams, OrderQueryParams } from '../../types'
+import { convertToOrderRecords } from '../../utils/dataConverters'
+
+// SQL模板配置
+export interface SQLTemplateConfig {
+  name: string
+  description: string
+  sql: string
+  parameters: string[]
+  hasPagination: boolean
+}
+
+// SQL处理结果
+export interface ProcessedSQL {
+  sql: string
+  params: any[]
+  paramCount: number
+  hasPagination: boolean
+}
+
+// 订单查询SQL处理结果
+export interface OrderProcessedSQL extends ProcessedSQL {
+  queryParams: OrderQueryParams
+  page?: number
+  pageSize?: number
+}
+
+// SQL处理器类
+export class SQLProcessor {
+  private readonly templatesPath: string
+  private templates: Map<string, SQLTemplateConfig> = new Map()
+
+  constructor(templatesPath: string) {
+    this.templatesPath = templatesPath
+  }
+
+  // 加载SQL模板
+  async loadTemplate(templateName: string): Promise<SQLTemplateConfig> {
+    try {
+      const templatePath = path.join(this.templatesPath, `${templateName}.sql`)
+      const sqlContent = await fs.readFile(templatePath, 'utf-8')
+      
+      // 分析SQL模板，提取参数信息和分页配置
+      const parameters = this.extractParameters(sqlContent)
+      const hasPagination = this.hasPagination(sqlContent)
+      
+      const template: SQLTemplateConfig = {
+        name: templateName,
+        description: this.extractDescription(sqlContent),
+        sql: sqlContent,
+        parameters,
+        hasPagination,
+      }
+      
+      this.templates.set(templateName, template)
+      logger.debug(`已加载SQL模板: ${templateName}`, { paramCount: parameters.length })
+      
+      return template
+    } catch (error) {
+      logger.error(`加载SQL模板失败: ${templateName}`, error)
+      throw new Error(`无法加载SQL模板: ${templateName}`)
+    }
+  }
+
+  // 处理查询参数（兼容新老接口）
+  processQuery(templateName: string, queryParams: QueryParams): ProcessedSQL {
+    const template = this.templates.get(templateName)
+    if (!template) {
+      throw new Error(`SQL模板未找到: ${templateName}`)
+    }
+
+    const { sql } = template
+    const filters = this.buildFilters(queryParams.filters)
+    const params = this.buildParams(queryParams)
+    
+    // 如果是分页查询，添加LIMIT和OFFSET
+    let finalSQL = sql
+    if (queryParams.pagination && template.hasPagination) {
+      const { page, pageSize } = queryParams.pagination
+      const offset = (page - 1) * pageSize
+      
+      // 如果SQL已经有分页占位符，直接替换
+      if (this.hasPaginationPlaceholder(sql)) {
+        finalSQL = sql.replace(/LIMIT\s*\?\s*OFFSET\s*\?/g, `LIMIT ? OFFSET ?`)
+        params.push(pageSize, offset)
+      } else {
+        // 否则添加分页子句
+        finalSQL = `${sql.trim()} LIMIT ? OFFSET ?`
+        params.push(pageSize, offset)
+      }
+    }
+
+    // 构建完整的SQL（将过滤器注入到WHERE子句中）
+    const processedSQL = this.injectFilters(finalSQL, filters)
+    
+    return {
+      sql: processedSQL,
+      params,
+      paramCount: params.length,
+      hasPagination: template.hasPagination,
+    }
+  }
+
+  // 处理订单查询参数（新接口，专用于订单对账查询）
+  processOrderQuery(queryParams: OrderQueryParams): OrderProcessedSQL {
+    const templateName = 'order-reconciliation'
+    const template = this.templates.get(templateName)
+    if (!template) {
+      throw new Error(`SQL模板未找到: ${templateName}`)
+    }
+
+    const { sql } = template
+    
+    // 构建参数数组（按照SQL模板中的参数顺序）
+    const params = this.buildOrderQueryParams(queryParams)
+    
+    // 构建完整的SQL（不需要注入过滤器，因为SQL模板已经包含）
+    // 直接从模板获取SQL，参数已在构建时处理位置
+    
+    const finalSQL = sql // 模板已经是参数化格式
+    
+    // 计算分页参数
+    const page = queryParams.page || 1
+    const pageSize = queryParams.pageSize || 20
+    const offset = (page - 1) * pageSize
+    
+    // 添加分页参数到参数数组末尾
+    const finalParams = [...params, pageSize, offset]
+    
+    return {
+      sql: finalSQL,
+      params: finalParams,
+      paramCount: finalParams.length,
+      hasPagination: template.hasPagination,
+      queryParams,
+      page,
+      pageSize,
+    }
+  }
+
+  // 构建订单查询参数
+  private buildOrderQueryParams(queryParams: OrderQueryParams): any[] {
+    const params: any[] = []
+    
+    // 按照SQL模板中的参数顺序构建
+    // 1. 开始时间
+    params.push(queryParams.startTime)
+    
+    // 2. 结束时间（注意：SQL模板中的结束时间参数是两次，因为要加一天）
+    params.push(queryParams.endTime)
+    params.push(queryParams.endTime) // 第二个结束时间参数
+    
+    // 3. 门店代码（条件1）
+    const cleanedStationCodes = this.cleanStoreIds(queryParams.stationCodes || '')
+    params.push(cleanedStationCodes)
+    params.push(cleanedStationCodes) // 由于FIND_IN_SET需要两个参数（原始和替换后的）
+    
+    // 4. 手机号（条件2）
+    params.push(queryParams.mobile || '')
+    params.push(queryParams.mobile || '') // 由于条件判断需要两个参数
+    
+    // 5. 订单状态（条件3）
+    const statusValue = queryParams.status || ''
+    params.push(statusValue)
+    
+    // 注意：status IN (?) 在SQL中需要参数展开，但这里传字符串，SQL会处理
+    // 实际SQL模板中是：`AND (? = '' OR o.status IN (?))`
+    
+    return params
+  }
+
+  // 构建过滤器条件
+  private buildFilters(filters: QueryParams['filters']): string {
+    const conditions: string[] = []
+
+    if (!filters) return ''
+
+    // 处理门店筛选
+    if (filters.storeIds && filters.storeIds.trim()) {
+      const cleanedIds = this.cleanStoreIds(filters.storeIds)
+      if (cleanedIds) {
+        conditions.push(`FIND_IN_SET(ts.out_code, ?) > 0`)
+      }
+    }
+
+    // 处理手机号筛选
+    if (filters.mobile && filters.mobile.trim()) {
+      conditions.push(`tu.user_mobile = ?`)
+    }
+
+    // 处理订单状态筛选
+    if (filters.statuses && filters.statuses.length > 0) {
+      const statusPlaceholders = filters.statuses.map(() => '?').join(', ')
+      conditions.push(`o.status IN (${statusPlaceholders})`)
+    }
+
+    // 处理时间范围已经在基础SQL中处理
+    // 额外的筛选条件可以在此添加
+
+    return conditions.length > 0 
+      ? `AND ${conditions.join(' AND ')}`
+      : ''
+  }
+
+  // 构建参数数组
+  private buildParams(queryParams: QueryParams): any[] {
+    const { filters } = queryParams
+    const params: any[] = []
+
+    if (!filters) return params
+
+    // 时间范围参数（已写在SQL模板中）
+    // params.push(filters.startDate, filters.endDate)
+
+    // 门店筛选参数
+    if (filters.storeIds && filters.storeIds.trim()) {
+      const cleanedIds = this.cleanStoreIds(filters.storeIds)
+      if (cleanedIds) {
+        params.push(cleanedIds)
+      }
+    }
+
+    // 手机号参数
+    if (filters.mobile && filters.mobile.trim()) {
+      params.push(filters.mobile)
+    }
+
+    // 订单状态参数
+    if (filters.statuses && filters.statuses.length > 0) {
+      params.push(...filters.statuses)
+    }
+
+    return params
+  }
+
+  // 清理门店ID（中文逗号转英文，去除空格）
+  private cleanStoreIds(storeIds: string): string {
+    return storeIds
+      .replace(/，/g, ',')      // 中文逗号转英文逗号
+      .replace(/\s+/g, '')      // 去除空格
+      .trim()
+      .split(',')               // 分割
+      .map(id => id.trim())     // 去除每个ID的空白
+      .filter(id => id.length > 0) // 过滤空字符串
+      .join(',')                // 重新组合
+  }
+
+  // 将过滤器注入SQL
+  private injectFilters(sql: string, filters: string): string {
+    // 查找WHERE子句的位置
+    const whereIndex = sql.toUpperCase().indexOf('WHERE ')
+    if (whereIndex === -1) {
+      // 如果没有WHERE子句，添加到SQL末尾
+      return `${sql.trim()} WHERE 1=1 ${filters}`
+    }
+
+    // 找到WHERE子句的结束位置（下一个关键字）
+    const afterWhere = sql.substring(whereIndex)
+    const nextKeyword = this.findNextKeyword(afterWhere, ['GROUP BY', 'ORDER BY', 'LIMIT'])
+    
+    if (!nextKeyword) {
+      // 如果没有后续关键字，直接添加在WHERE子句末尾
+      return sql + ' ' + filters
+    }
+
+    // 在WHERE和下一个关键字之间插入过滤器
+    const beforeWhere = sql.substring(0, whereIndex)
+    const whereClause = afterWhere.substring(0, nextKeyword.index)
+    const afterClause = afterWhere.substring(nextKeyword.index)
+    
+    return beforeWhere + whereClause + ' ' + filters + ' ' + afterClause
+  }
+
+  // 添加参数化方法
+  parameterizeTemplate(sql: string, filters: any): { sql: string; params: any[] } {
+    // 替换时间参数占位符
+    let parameterizedSQL = sql
+    
+    // 替换时间范围占位符（处理原有的 @begin_time 和 @end_time 格式）
+    parameterizedSQL = parameterizedSQL.replace(/@begin_time = '[^']+'/g, '?')
+    parameterizedSQL = parameterizedSQL.replace(/@end_time = '[^']+'/g, '?')
+    parameterizedSQL = parameterizedSQL.replace(/@begin_time/g, '?')
+    parameterizedSQL = parameterizedSQL.replace(/@end_time/g, '?')
+    
+    // 替换门店代码占位符
+    if (parameterizedSQL.includes('@shopidlist')) {
+      parameterizedSQL = parameterizedSQL.replace(/@shopidlist/g, '?')
+    }
+    
+    // 替换手机号占位符
+    if (parameterizedSQL.includes('@mobile')) {
+      parameterizedSQL = parameterizedSQL.replace(/@mobile/g, '?')
+    }
+    
+    // 如果是SQL模板中的参数化格式，也进行处理
+    parameterizedSQL = parameterizedSQL.replace(/{{([^}]+)}}/g, '?')
+    
+    // 构建参数数组
+    const params = this.buildParameterValues(sql, filters)
+    
+    return { sql: parameterizedSQL, params }
+  }
+  
+  private buildParameterValues(originalSQL: string, filters: any): any[] {
+    const params: any[] = []
+    
+    if (!filters) return params
+    
+    // 按照SQL中参数的顺序构建值数组
+    if (originalSQL.includes('@begin_time')) {
+      params.push(filters.dateRange?.start || '2026-01-01')
+    }
+    
+    if (originalSQL.includes('@end_time')) {
+      params.push(filters.dateRange?.end || '2026-01-31')
+    }
+    
+    // 处理门店筛选参数（需要特殊处理，因为在SQL中会出现两次）
+    if (originalSQL.includes('@shopidlist')) {
+      const cleanedIds = this.cleanStoreIds(filters.storeIds || '')
+      console.log('门店参数处理:', { cleanedIds, originalSQL })
+      // 对于FIND_IN_SET的情况，可能需要添加两个参数（原始值和清洗后的值）
+      // 但在我们的场景中，SQL模板已经处理了
+      params.push(cleanedIds)
+    }
+    
+    // 处理手机号参数
+    if (originalSQL.includes('@mobile')) {
+      params.push(filters.mobile || '')
+    }
+    
+    // 处理订单状态参数
+    const statusMatch = originalSQL.match(/@status_list/g)
+    if (statusMatch && filters.statuses) {
+      params.push(filters.statuses.join(','))
+    }
+    
+    return params
+  }
+
+  // 提取SQL描述（注释第一行）
+  private extractDescription(sql: string): string {
+    const lines = sql.split('\n')
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (trimmed.startsWith('/*') && trimmed.includes('*/')) {
+        const content = trimmed.replace(/^\/\*\s*|\s*\*\/$/g, '')
+        if (content) return content
+      }
+      if (trimmed.startsWith('--') && trimmed.length > 2) {
+        return trimmed.substring(2).trim()
+      }
+    }
+    return '无描述'
+  }
+
+  // 提取参数占位符
+  private extractParameters(sql: string): string[] {
+    const parameters: string[] = []
+    const regex = /@(\w+)/g
+    let match: RegExpExecArray | null
+    
+    while ((match = regex.exec(sql)) !== null) {
+      const paramName = match[1]
+      if (!parameters.includes(paramName)) {
+        parameters.push(paramName)
+      }
+    }
+    
+    return parameters
+  }
+
+  // 检查是否有分页占位符
+  private hasPaginationPlaceholder(sql: string): boolean {
+    return /\bLIMIT\s*\?\s*OFFSET\s*\?\b/i.test(sql)
+  }
+
+  // 检查SQL是否有分页
+  private hasPagination(sql: string): boolean {
+    return /\bLIMIT\s+\d+\b/i.test(sql) || this.hasPaginationPlaceholder(sql)
+  }
+
+  // 查找下一个关键字
+  private findNextKeyword(text: string, keywords: string[]): { keyword: string, index: number } | null {
+    let minIndex = Infinity
+    let foundKeyword = ''
+    
+    for (const keyword of keywords) {
+      const index = text.toUpperCase().indexOf(keyword)
+      if (index !== -1 && index < minIndex) {
+        minIndex = index
+        foundKeyword = keyword
+      }
+    }
+    
+    return minIndex < Infinity ? { keyword: foundKeyword, index: minIndex } : null
+  }
+
+  // 验证SQL的安全性
+  validateSQLSafety(sql: string): { valid: boolean; errors: string[] } {
+    const errors: string[] = []
+    
+    // 检查危险操作
+    const dangerousPatterns = [
+      { pattern: /\bDROP\s+TABLE\b/i, message: 'SQL包含DROP TABLE操作' },
+      { pattern: /\bTRUNCATE\s+TABLE\b/i, message: 'SQL包含TRUNCATE TABLE操作' },
+      { pattern: /\bDELETE\s+FROM\b/i, message: 'SQL包含DELETE操作' },
+      { pattern: /\bUPDATE\b.*\bSET\b/i, message: 'SQL包含UPDATE操作' },
+      { pattern: /\bINSERT\s+INTO\b/i, message: 'SQL包含INSERT操作' },
+      { pattern: /\bEXEC\b|\bEXECUTE\b|\bsp_executesql\b/i, message: 'SQL包含EXECUTE操作' },
+      { pattern: /\bUNION\b/i, message: 'SQL包含UNION操作' },
+      { pattern: /;\s*$/m, message: 'SQL包含多个语句（分号）' },
+    ]
+    
+    for (const { pattern, message } of dangerousPatterns) {
+      if (pattern.test(sql)) {
+        errors.push(message)
+      }
+    }
+    
+    // 检查是否有未参数化的输入
+    const variablePattern = /'[^']+'/g
+    const matches = sql.match(variablePattern)
+    if (matches) {
+      // 检查是否是有效的时间格式或常量
+      const suspiciousVars = matches.filter(v => {
+        const value = v.replace(/'/g, '')
+        // 允许的时间格式常量
+        const isTimeConstant = /^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$/.test(value)
+        // 允许的数字常量
+        const isNumber = /^\d+(\.\d+)?$/.test(value)
+        // 允许的固定字符串
+        const isFixedString = ['Y', 'N', 'true', 'false', '1', '0'].includes(value.toLowerCase())
+        
+        return !isTimeConstant && !isNumber && !isFixedString
+      })
+      
+      if (suspiciousVars.length > 0) {
+        errors.push('SQL包含可能是硬编码字符串的值，建议使用参数化查询')
+      }
+    }
+    
+    return {
+      valid: errors.length === 0,
+      errors,
+    }
+  }
+
+  // 获取所有已加载的模板
+  getLoadedTemplates(): SQLTemplateConfig[] {
+    return Array.from(this.templates.values())
+  }
+
+  // 清空模板缓存
+  clearTemplates(): void {
+    this.templates.clear()
+    logger.debug('已清空SQL模板缓存')
+  }
+
+  // 数据处理方法
+  processQueryResults(rawData: any[], queryParams?: OrderQueryParams): {
+    records: any[]
+    total?: number
+    executionTime?: number
+  } {
+    if (!rawData || !Array.isArray(rawData)) {
+      return { records: [] }
+    }
+
+    try {
+      // 转换为订单记录
+      const records = convertToOrderRecords(rawData)
+      
+      // 可选：计算总数（如果有的话）
+      let total = rawData.length
+      
+      // 如果是分页查询且有总数信息，可以从SQL查询结果中提取
+      // 这里假设rawData是查询结果，如果需要总数信息需要单独查询
+      
+      return {
+        records,
+        total,
+        // executionTime 应该在调用处添加
+      }
+    } catch (error) {
+      logger.error('处理查询结果失败:', error)
+      throw error
+    }
+  }
+
+  // 处理查询统计信息（用于分页）
+  processCountingSQL(queryParams: OrderQueryParams): ProcessedSQL {
+    const templateName = 'order-reconciliation'
+    const template = this.templates.get(templateName)
+    if (!template) {
+      throw new Error(`SQL模板未找到: ${templateName}`)
+    }
+
+    const { sql } = template
+    
+    // 从原SQL中构造COUNT查询
+    // 移除SELECT部分，添加COUNT(*)
+    const countSQL = this.convertToCountSQL(sql)
+    
+    // 构建参数（但不包括分页参数）
+    const params = this.buildOrderQueryParams(queryParams)
+    
+    // 注意：计数查询不需要分页参数，所以移除了最后两个参数（LIMIT ? OFFSET ?）
+    // 但原参数包含两个结束时间、两个门店代码等，计数查询需要同样的参数
+    const countParams = params.slice(0, -2) // 移除最后两个分页参数位置
+    
+    return {
+      sql: countSQL,
+      params: countParams,
+      paramCount: countParams.length,
+      hasPagination: false,
+    }
+  }
+
+  // 将查询SQL转换为COUNT查询
+  private convertToCountSQL(sql: string): string {
+    // 找到SELECT开始到FROM的位置
+    const selectFromMatch = sql.match(/SELECT\s+(.*?)\s+FROM\s+(.*)/is)
+    if (!selectFromMatch) {
+      throw new Error('无法解析SQL语句')
+    }
+
+    const [, , fromOnwards] = selectFromMatch
+    
+    // 找到ORDER BY和LIMIT的位置
+    const orderByIndex = fromOnwards.toUpperCase().indexOf('ORDER BY')
+    const limitIndex = fromOnwards.toUpperCase().indexOf('LIMIT')
+    
+    let coreSQL = fromOnwards
+    
+    // 移除非分页相关的尾部分句
+    if (limitIndex !== -1) {
+      coreSQL = fromOnwards.substring(0, limitIndex)
+    }
+    
+    // 移除ORDER BY（对于COUNT查询不需要）
+    if (orderByIndex !== -1 && (limitIndex === -1 || orderByIndex < limitIndex)) {
+      coreSQL = fromOnwards.substring(0, orderByIndex)
+    }
+    
+    // 构建COUNT查询
+    return `SELECT COUNT(DISTINCT o.order_number) as total ${coreSQL.trim()}`.replace(/GROUP BY.*$/i, '')
+  }
+}

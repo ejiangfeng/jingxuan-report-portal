@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Export files (generated at runtime)
+backend/exports/*.xlsx
+
+# Backup files
+*.bak
+*.backup
+*备份*
+
+# Temporary files
+*.tmp
+*.temp
+html_body.tmp
+
+# Old files (kept for reference)
+simple-frontend.html
