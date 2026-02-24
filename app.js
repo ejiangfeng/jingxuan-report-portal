@@ -84,7 +84,7 @@
                 loadData();
             });
             exportBtn.addEventListener('click', exportData);
-            document.getElementById('viewExportsBtn').addEventListener('click', openExportModal);
+            document.getElementById('viewExportsBtn').addEventListener('click', function() { window.openExportModal(); });
             clearBtn.addEventListener('click', clearFilters);
             prevPage.addEventListener('click', () => changePage(-1));
             nextPage.addEventListener('click', () => changePage(1));
@@ -1355,9 +1355,6 @@
                 }
             } catch (error) {
                 console.error('导出失败:', error);
-                alert('导出失败: ' + error.message);
-            }
-        }
                 alert('导出失败: ' + error.message);
             }
         }
