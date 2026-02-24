@@ -10,6 +10,40 @@
         const pageSize = 10;
         let totalOrders = 0;
         
+        // 报表切换函数 - 提前定义以便事件绑定使用
+        window.showReport = function(reportType) {
+            // 更新导航状态
+            document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+            document.getElementById('nav-' + reportType).classList.add('active');
+            
+            // 切换报表显示
+            document.getElementById('order-report').style.display = reportType === 'order' ? 'block' : 'none';
+            document.getElementById('penetration-report').style.display = reportType === 'penetration' ? 'block' : 'none';
+            document.getElementById('coupon-report').style.display = reportType === 'coupon' ? 'block' : 'none';
+            document.getElementById('freight-report').style.display = reportType === 'freight' ? 'block' : 'none';
+            document.getElementById('invitation-report').style.display = reportType === 'invitation' ? 'block' : 'none';
+            
+            // 初始化商品渗透率报表日期 T-2 到 T-1
+            if (reportType === 'penetration' && typeof initPenetrationDates === 'function') {
+                initPenetrationDates();
+            }
+            
+            // 初始化优惠券报表日期
+            if (reportType === 'coupon' && typeof initCouponDates === 'function') {
+                initCouponDates();
+            }
+            
+            // 初始化免运活动报表日期
+            if (reportType === 'freight' && typeof initFreightDates === 'function') {
+                initFreightDates();
+            }
+            
+            // 初始化社群拉新报表日期
+            if (reportType === 'invitation' && typeof initInvitationDates === 'function') {
+                initInvitationDates();
+            }
+        }
+        
         // DOM元素
         const ordersBody = document.getElementById('ordersBody');
         const loading = document.getElementById('loading');
@@ -648,40 +682,6 @@
         
         function showError(message) {
             alert('错误: ' + message);
-        }
-        
-        // ========== 报表切换 ==========
-        window.showReport = function(reportType) {
-            // 更新导航状态
-            document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
-            document.getElementById('nav-' + reportType).classList.add('active');
-            
-            // 切换报表显示
-            document.getElementById('order-report').style.display = reportType === 'order' ? 'block' : 'none';
-            document.getElementById('penetration-report').style.display = reportType === 'penetration' ? 'block' : 'none';
-            document.getElementById('coupon-report').style.display = reportType === 'coupon' ? 'block' : 'none';
-            document.getElementById('freight-report').style.display = reportType === 'freight' ? 'block' : 'none';
-            document.getElementById('invitation-report').style.display = reportType === 'invitation' ? 'block' : 'none';
-            
-            // 初始化商品渗透率报表日期 T-2 到 T-1
-            if (reportType === 'penetration') {
-                initPenetrationDates();
-            }
-            
-            // 初始化优惠券报表日期
-            if (reportType === 'coupon') {
-                initCouponDates();
-            }
-            
-            // 初始化免运活动报表日期
-            if (reportType === 'freight') {
-                initFreightDates();
-            }
-            
-            // 初始化社群拉新报表日期
-            if (reportType === 'invitation') {
-                initInvitationDates();
-            }
         }
         
         // ========== 商品渗透率报表 ==========
