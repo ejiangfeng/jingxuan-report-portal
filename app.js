@@ -1,9 +1,9 @@
         // API基础配置 - 自动检测运行环境
         // Docker环境（nginx代理）：使用相对路径 /api/v1
         // 本地开发环境：使用 hostname:4000/api/v1
-        const API_BASE_URL = (window.location.port === '8080' || window.location.port === '80' || window.location.port === '') 
-            ? '/api/v1' 
-            : `${window.location.protocol}//${window.location.hostname}:4000/api/v1`;
+        const API_BASE_URL = (window.location.port === '4000') 
+            ? `${window.location.protocol}//${window.location.hostname}:4000/api/v1`
+            : '/api/v1';
         
         // 状态管理
         let currentPage = 1;
@@ -733,7 +733,15 @@
                 const response = await fetch(`${API_BASE_URL}/reports/product-penetration`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ startTime, endTime, stationCodes, barCodes, partyCodes })
+                    body: JSON.stringify({ 
+                        startTime, 
+                        endTime, 
+                        stationCodes, 
+                        barCodes, 
+                        partyCodes,
+                        page: penCurrentPage,
+                        pageSize: penPageSize
+                    })
                 });
                 
                 const result = await response.json();
