@@ -174,8 +174,8 @@ FROM tz_order o
     FROM tz_pay_info WHERE pay_status = 1 AND pay_lh_type = '1002'
   ) jtpay ON o.order_number = jtpay.order_number
 WHERE o.is_payed = 1 
-  AND DATE(o.create_time) >= ?
-  AND DATE(o.create_time) <= ?
+  AND DATE(CONVERT_TZ(o.create_time, '+00:00', '+08:00')) >= ?
+  AND DATE(CONVERT_TZ(o.create_time, '+00:00', '+08:00')) <= ?
   AND (? = '' OR FIND_IN_SET(ts.out_code, REPLACE(?, '，', ',')) > 0)
   AND (? = '' OR tu.user_mobile = ?)
   AND (? = '' OR o.status IN (?))
@@ -1494,8 +1494,8 @@ app.post('/api/v1/orders/query', async (req, res) => {
         LEFT JOIN tz_station ts ON o.station_id = ts.station_id
         LEFT JOIN tz_user tu ON o.user_id = tu.user_id
         WHERE o.is_payed = 1 
-        AND DATE(o.create_time) >= ?
-        AND DATE(o.create_time) <= ?
+        AND DATE(CONVERT_TZ(o.create_time, '+00:00', '+08:00')) >= ?
+        AND DATE(CONVERT_TZ(o.create_time, '+00:00', '+08:00')) <= ?
         AND (? = '' OR FIND_IN_SET(ts.out_code, REPLACE(?, '，', ',')) > 0)
         AND (? = '' OR tu.user_mobile = ?)
         AND (? = '' OR o.status IN (?))`;
@@ -1639,8 +1639,8 @@ app.post('/api/v1/orders/export', async (req, res) => {
         LEFT JOIN tz_station ts ON o.station_id = ts.station_id
         LEFT JOIN tz_user tu ON o.user_id = tu.user_id
         WHERE o.is_payed = 1 
-        AND DATE(o.create_time) >= ?
-        AND DATE(o.create_time) <= ?
+        AND DATE(CONVERT_TZ(o.create_time, '+00:00', '+08:00')) >= ?
+        AND DATE(CONVERT_TZ(o.create_time, '+00:00', '+08:00')) <= ?
         AND (? = '' OR FIND_IN_SET(ts.out_code, REPLACE(?, '，', ',')) > 0)
         AND (? = '' OR tu.user_mobile = ?)
         AND (? = '' OR o.status IN (?))`;
