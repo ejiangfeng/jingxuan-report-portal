@@ -669,11 +669,17 @@
         
         // 工具函数
         function formatDate(isoString) {
-            const date = new Date(isoString);
-            return date.toLocaleDateString('zh-CN') + ' ' + date.toLocaleTimeString('zh-CN', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-            });
+            if (!isoString) return '';
+            // 如果是ISO格式字符串，直接提取日期时间部分，不做时区转换
+            if (typeof isoString === 'string' && isoString.includes('T')) {
+                // 格式: 2026-02-24T15:59:56.000Z -> 2026/2/24 15:59
+                const parts = isoString.split('T');
+                const datePart = parts[0].replace(/-/g, '/');
+                const timePart = parts[1].substring(0, 5); // 取小时:分钟
+                return datePart + ' ' + timePart;
+            }
+            // 其他格式直接返回
+            return isoString;
         }
         
         function showLoading(show) {
