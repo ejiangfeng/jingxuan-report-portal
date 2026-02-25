@@ -651,17 +651,39 @@
         // 工具函数
         function formatDate(isoString) {
             if (!isoString) return '';
-            // 转换为北京时间 (UTC+8)
-            const date = new Date(isoString);
-            return date.toLocaleString('zh-CN', {
-                year: 'numeric',
-                month: 'numeric',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: false,
-                timeZone: 'Asia/Shanghai'
-            }).replace(/,/g, '');
+            // 如果是 ISO 格式字符串
+            if (typeof isoString === 'string' && isoString.includes('T')) {
+                // OceanBase 存储的是北京时间，但返回格式是 UTC（带 Z）
+                // 所以需要从解析的时间中减去 8 小时
+                const date = new Date(isoString);
+                date.setHours(date.getHours() - 8);
+                
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                return `${year}/${month}/${day} ${hours}:${minutes}`;
+            }
+            // 其他格式直接返回
+            return isoString;
+        }
+        
+        function formatExportTime(isoString) {
+            if (!isoString) return '';
+            // 导出任务的时间是后端生成的真实 UTC 时间，需要加 8 小时
+            if (typeof isoString === 'string' && isoString.includes('T')) {
+                const date = new Date(isoString);
+                date.setHours(date.getHours() + 8);
+                
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                return `${year}/${month}/${day} ${hours}:${minutes}`;
+            }
+            return isoString;
         }
         
         function showLoading(show) {
