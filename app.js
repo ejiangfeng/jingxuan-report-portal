@@ -187,8 +187,10 @@
             
             // 绑定模态框按钮点击事件
             document.addEventListener('click', function(e) {
-                const action = e.target.getAttribute('data-action');
-                if (!action) return;
+                const target = e.target.closest('[data-action]');
+                if (!target) return;
+                
+                const action = target.getAttribute('data-action');
                 
                 switch(action) {
                     case 'close-export-type':
@@ -197,7 +199,7 @@
                         }
                         break;
                     case 'export':
-                        const exportType = e.target.getAttribute('data-export-type');
+                        const exportType = target.getAttribute('data-export-type');
                         if (typeof window.doExport === 'function' && exportType) {
                             window.doExport(exportType);
                         }
@@ -218,38 +220,17 @@
                         }
                         break;
                     case 'download-export':
-                        const taskId = e.target.getAttribute('data-task-id');
+                        const taskId = target.getAttribute('data-task-id');
                         if (typeof window.downloadExport === 'function' && taskId) {
                             window.downloadExport(taskId);
                         }
                         break;
                     case 'view-detail':
-                        const orderId = e.target.getAttribute('data-order-id');
+                        const orderId = target.getAttribute('data-order-id');
                         if (typeof window.viewDetail === 'function' && orderId) {
                             window.viewDetail(orderId);
                         }
                         break;
-                }
-            });
-            
-            // 使用事件委托处理动态生成的按钮（防止重复绑定）
-            document.getElementById('exportTasksList')?.addEventListener('click', function(e) {
-                const target = e.target.closest('[data-action="download-export"]');
-                if (target) {
-                    const taskId = target.getAttribute('data-task-id');
-                    if (typeof window.downloadExport === 'function' && taskId) {
-                        window.downloadExport(taskId);
-                    }
-                }
-            });
-            
-            document.getElementById('ordersBody')?.addEventListener('click', function(e) {
-                const target = e.target.closest('[data-action="view-detail"]');
-                if (target) {
-                    const orderId = target.getAttribute('data-order-id');
-                    if (typeof window.viewDetail === 'function' && orderId) {
-                        window.viewDetail(orderId);
-                    }
                 }
             });
         }
