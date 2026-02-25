@@ -808,14 +808,6 @@ app.post('/api/v1/reports/coupon-query/export', async (req, res) => {
       conn.release();
       
       const total = countResult[0]?.total || 0;
-      if (total > EXPORT_MAX_RECORDS) {
-        return res.status(400).json({
-          success: false,
-          error: `导出记录超出${EXPORT_MAX_RECORDS / 10000}万条记录，请缩小查询范围`,
-          total,
-          timestamp: new Date().toISOString()
-        });
-      }
     } catch (err) {
       console.error('预检查错误:', err.message);
     }
@@ -880,7 +872,7 @@ async function processCouponQueryExport(taskId, params) {
     try {
       await conn.query("SET SESSION ob_query_timeout = 300000000");
       
-      const exportSql = COUPON_QUERY_SQL.replace('LIMIT ? OFFSET ?', 'LIMIT 100000');
+      const exportSql = COUPON_QUERY_SQL.replace('LIMIT ? OFFSET ?', '');
       const queryParams = [
         receiveStartTime, receiveStartTime,
         receiveEndTime, receiveEndTime,
@@ -1030,14 +1022,6 @@ app.post('/api/v1/reports/freight-activity/export', async (req, res) => {
       conn.release();
       
       const total = countResult[0]?.total || 0;
-      if (total > EXPORT_MAX_RECORDS) {
-        return res.status(400).json({
-          success: false,
-          error: `导出记录超出${EXPORT_MAX_RECORDS / 10000}万条记录，请缩小查询范围`,
-          total,
-          timestamp: new Date().toISOString()
-        });
-      }
     } catch (err) {
       console.error('预检查错误:', err.message);
     }
@@ -1251,14 +1235,6 @@ app.post('/api/v1/reports/invitation/export', async (req, res) => {
       conn.release();
       
       const total = countResult[0]?.total || 0;
-      if (total > EXPORT_MAX_RECORDS) {
-        return res.status(400).json({
-          success: false,
-          error: `导出记录超出${EXPORT_MAX_RECORDS / 10000}万条记录，请缩小查询范围`,
-          total,
-          timestamp: new Date().toISOString()
-        });
-      }
     } catch (err) {
       console.error('预检查错误:', err.message);
     }
@@ -1649,14 +1625,6 @@ app.post('/api/v1/orders/export', async (req, res) => {
       conn.release();
       
       const total = countResult[0]?.total || 0;
-      if (total > EXPORT_MAX_RECORDS) {
-        return res.status(400).json({
-          success: false,
-          error: `导出记录超出${EXPORT_MAX_RECORDS / 10000}万条记录，请缩小查询范围`,
-          total,
-          timestamp: new Date().toISOString()
-        });
-      }
     } catch (err) {
       console.error('预检查错误:', err.message);
     }
