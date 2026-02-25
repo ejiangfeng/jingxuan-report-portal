@@ -734,7 +734,7 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    penData = result.data.list || [];
+                    penData = result.data.items || [];
                     penTotalCount = result.data.total || 0;
                     penCurrentPage = 1;
                     document.getElementById('penTotalCount').textContent = penTotalCount;
@@ -920,7 +920,7 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    couponData = result.data.list || [];
+                    couponData = result.data.items || [];
                     couponTotalRecords = result.data.total || 0;
                     document.getElementById('couponTotalCount').textContent = couponTotalRecords;
                     document.getElementById('couponExecTime').textContent = result.executionTime || '--';
@@ -1099,7 +1099,7 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    freightData = result.data.list || [];
+                    freightData = result.data.items || [];
                     freightTotalRecords = result.data.total || 0;
                     document.getElementById('freightTotalCount').textContent = freightTotalRecords;
                     document.getElementById('freightExecTime').textContent = result.executionTime || '--';
@@ -1261,7 +1261,7 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    invitationData = result.data.list || [];
+                    invitationData = result.data.items || [];
                     invitationTotalRecords = result.data.total || 0;
                     document.getElementById('invitationTotalCount').textContent = invitationTotalRecords;
                     document.getElementById('invitationExecTime').textContent = result.executionTime || '--';
