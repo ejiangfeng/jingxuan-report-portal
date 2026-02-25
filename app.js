@@ -265,7 +265,7 @@
                 
                 if (data.success) {
                     totalOrders = data.data.total;
-                    renderOrders(data.data.items);
+                    renderOrders(data.data.list);
                     updatePagination();
                 } else {
                     showError('数据加载失败');
@@ -734,15 +734,15 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    penData = result.data.items;
-                    penTotalCount = result.data.items.length;
+                    penData = result.data.list || [];
+                    penTotalCount = result.data.total || 0;
                     penCurrentPage = 1;
                     document.getElementById('penTotalCount').textContent = penTotalCount;
-                    document.getElementById('penExecTime').textContent = result.executionTime;
+                    document.getElementById('penExecTime').textContent = result.executionTime || '--';
                     renderPenetrationTablePage();
                     updatePenPagination();
                 } else {
-                    alert('查询失败: ' + result.error);
+                    alert('查询失败：' + result.error);
                 }
             } catch (error) {
                 console.error('查询失败:', error);
@@ -920,14 +920,14 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    couponData = result.data.items;
-                    couponTotalRecords = result.data.total;
+                    couponData = result.data.list || [];
+                    couponTotalRecords = result.data.total || 0;
                     document.getElementById('couponTotalCount').textContent = couponTotalRecords;
-                    document.getElementById('couponExecTime').textContent = result.executionTime;
+                    document.getElementById('couponExecTime').textContent = result.executionTime || '--';
                     renderCouponTable(couponData);
                     updateCouponPagination();
                 } else {
-                    alert('查询失败: ' + result.error);
+                    alert('查询失败：' + result.error);
                 }
             } catch (error) {
                 console.error('查询失败:', error);
@@ -1099,14 +1099,14 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    freightData = result.data.items;
-                    freightTotalRecords = result.data.total;
+                    freightData = result.data.list || [];
+                    freightTotalRecords = result.data.total || 0;
                     document.getElementById('freightTotalCount').textContent = freightTotalRecords;
-                    document.getElementById('freightExecTime').textContent = result.executionTime;
+                    document.getElementById('freightExecTime').textContent = result.executionTime || '--';
                     renderFreightTable(freightData);
                     updateFreightPagination();
                 } else {
-                    alert('查询失败: ' + result.error);
+                    alert('查询失败：' + result.error);
                 }
             } catch (error) {
                 console.error('查询失败:', error);
@@ -1261,14 +1261,14 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    invitationData = result.data.items;
-                    invitationTotalRecords = result.data.total;
+                    invitationData = result.data.list || [];
+                    invitationTotalRecords = result.data.total || 0;
                     document.getElementById('invitationTotalCount').textContent = invitationTotalRecords;
-                    document.getElementById('invitationExecTime').textContent = result.executionTime;
+                    document.getElementById('invitationExecTime').textContent = result.executionTime || '--';
                     renderInvitationTable(invitationData);
                     updateInvitationPagination();
                 } else {
-                    alert('查询失败: ' + result.error);
+                    alert('查询失败：' + result.error);
                 }
             } catch (error) {
                 console.error('查询失败:', error);
