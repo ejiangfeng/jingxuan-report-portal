@@ -265,7 +265,7 @@
                 
                 if (data.success) {
                     totalOrders = data.data.total;
-                    renderOrders(data.data.list);
+                    renderOrders(data.data.items);
                     updatePagination();
                 } else {
                     showError('数据加载失败');
