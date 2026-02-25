@@ -280,7 +280,7 @@
             }
         }
         
-        // 导出数据 - 打开选择弹窗
+        // 导出查询结果 - 打开选择弹窗
         function exportData() {
             document.getElementById('exportTypeModal').style.display = 'block';
         }
