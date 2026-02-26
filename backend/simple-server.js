@@ -260,8 +260,7 @@ JOIN (
     AND o.create_time >= ?
     AND o.create_time < DATE_ADD(?, INTERVAL 1 DAY)
 ) c
-ORDER BY a.order_count DESC
-LIMIT 10000`;
+ORDER BY a.order_count DESC`;
 
 // 订单明细查询SQL
 const ORDER_DETAIL_SQL = `
