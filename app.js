@@ -33,6 +33,19 @@
                 initCouponDates();
             }
             
+            // 初始化社群拉新报表日期
+            if (reportType === 'invitation' && typeof initInvitationDates === 'function') {
+                initInvitationDates();
+            }
+            
+            // 初始化商城用户下单报表日期
+            if (reportType === 'mall-user' && typeof initMallUserDate === 'function') {
+                initMallUserDate();
+            }
+            
+            // 切换商城用户下单报表显示
+            document.getElementById('mall-user-report').style.display = reportType === 'mall-user' ? 'block' : 'none';
+            
             // 初始化免运活动报表日期
             if (reportType === 'freight' && typeof initFreightDates === 'function') {
                 initFreightDates();
@@ -1606,13 +1619,4 @@
             loadExportTasks();
         });
         
-        // 添加到报表切换逻辑
-        const originalShowReport = window.showReport;
-        window.showReport = function(reportType) {
-            if (originalShowReport) originalShowReport(reportType);
-            document.getElementById('mall-user-report').style.display = reportType === 'mall-user' ? 'block' : 'none';
-            if (reportType === 'mall-user' && typeof initMallUserDate === 'function') {
-                initMallUserDate();
-            }
-        };
 
