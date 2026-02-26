@@ -1452,3 +1452,167 @@
         } else {
             initOtherReports();
         }
+
+        // ========== 商城用户下单查询 ===========
+        const mallUserSearchBtn = document.getElementById('mallUserSearchBtn');
+        const mallUserExportBtn = document.getElementById('mallUserExportBtn');
+        const mallUserViewExportsBtn = document.getElementById('mallUserViewExportsBtn');
+        const mallUserClearBtn = document.getElementById('mallUserClearBtn');
+        const mallUserPrevPage = document.getElementById('mallUserPrevPage');
+        const mallUserNextPage = document.getElementById('mallUserNextPage');
+        const mallUserBody = document.getElementById('mallUserBody');
+        const mallUserLoading = document.getElementById('mallUserLoading');
+        const mallUserTotalCount = document.getElementById('mallUserTotalCount');
+        const mallUserPageInfo = document.getElementById('mallUserPageInfo');
+        const mallUserDate = document.getElementById('mallUserDate');
+        const mallUserMobile = document.getElementById('mallUserMobile');
+        
+        let mallUserData = [];
+        let mallUserTotalRecords = 0;
+        let mallUserCurrentPage = 1;
+        const mallUserPageSize = 20;
+        
+        // 初始化日期为昨天
+        function initMallUserDate() {
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            mallUserDate.value = yesterday.toISOString().split('T')[0];
+        }
+        initMallUserDate();
+        
+        // 查询商城用户下单
+        mallUserSearchBtn.addEventListener('click', async function() {
+            mallUserLoading.style.display = 'block';
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/reports/mall-user`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        queryDate: mallUserDate.value,
+                        mobile: mallUserMobile.value,
+                        page: mallUserCurrentPage,
+                        pageSize: mallUserPageSize
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    mallUserData = result.data.list || [];
+                    mallUserTotalRecords = result.data.total || 0;
+                    mallUserCurrentPage = 1;
+                    mallUserTotalCount.textContent = mallUserTotalRecords;
+                    renderMallUserTable();
+                    updateMallUserPagination();
+                } else {
+                    alert('查询失败：' + result.error);
+                }
+            } catch (error) {
+                console.error('查询失败:', error);
+                alert('查询失败：' + error.message);
+            } finally {
+                mallUserLoading.style.display = 'none';
+            }
+        });
+        
+        // 渲染表格
+        function renderMallUserTable() {
+            if (!mallUserData || mallUserData.length === 0) {
+                mallUserBody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 40px; color: #999;">暂无数据</td></tr>';
+                return;
+            }
+            
+            mallUserBody.innerHTML = mallUserData.map(item => `
+                <tr>
+                    <td style="padding: 10px; border-bottom: 1px solid #f0f0f0;">${item.手机号 || '-'}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #f0f0f0;">${formatDate(item.最近下单时间)}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #f0f0f0;">${formatDate(item.鲸选商城最近下单时间)}</td>
+                </tr>
+            `).join('');
+        }
+        
+        // 更新分页
+        function updateMallUserPagination() {
+            const start = (mallUserCurrentPage - 1) * mallUserPageSize + 1;
+            const end = Math.min(mallUserCurrentPage * mallUserPageSize, mallUserTotalRecords);
+            mallUserPageInfo.textContent = `${start}-${end} / ${mallUserTotalRecords}`;
+            mallUserPrevPage.disabled = mallUserCurrentPage <= 1;
+            mallUserNextPage.disabled = mallUserCurrentPage * mallUserPageSize >= mallUserTotalRecords;
+        }
+        
+        // 上一页
+        mallUserPrevPage.addEventListener('click', function() {
+            if (mallUserCurrentPage > 1) {
+                mallUserCurrentPage--;
+                updateMallUserPagination();
+                renderMallUserTable();
+            }
+        });
+        
+        // 下一页
+        mallUserNextPage.addEventListener('click', function() {
+            if (mallUserCurrentPage * mallUserPageSize < mallUserTotalRecords) {
+                mallUserCurrentPage++;
+                updateMallUserPagination();
+                renderMallUserTable();
+            }
+        });
+        
+        // 清空筛选
+        mallUserClearBtn.addEventListener('click', function() {
+            mallUserDate.value = '';
+            mallUserMobile.value = '';
+            initMallUserDate();
+            mallUserData = [];
+            mallUserTotalRecords = 0;
+            mallUserTotalCount.textContent = '--';
+            mallUserBody.innerHTML = '';
+            mallUserPageInfo.textContent = '--';
+        });
+        
+        // 导出查询结果
+        mallUserExportBtn.addEventListener('click', async function() {
+            mallUserLoading.style.display = 'block';
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/reports/mall-user/export`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        queryDate: mallUserDate.value,
+                        mobile: mallUserMobile.value
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert(`✅ 导出任务已创建！\n\n任务 ID: ${result.data.id}\n\n请点击"📋 导出任务"按钮查看进度和下载文件。`);
+                } else {
+                    alert('导出失败：' + result.error);
+                }
+            } catch (error) {
+                console.error('导出失败:', error);
+                alert('导出失败：' + error.message);
+            } finally {
+                mallUserLoading.style.display = 'none';
+            }
+        });
+        
+        // 查看导出任务
+        mallUserViewExportsBtn.addEventListener('click', function() {
+            document.getElementById('exportTasksModal').style.display = 'block';
+            loadExportTasks();
+        });
+        
+        // 添加到报表切换逻辑
+        const originalShowReport = window.showReport;
+        window.showReport = function(reportType) {
+            if (originalShowReport) originalShowReport(reportType);
+            document.getElementById('mall-user-report').style.display = reportType === 'mall-user' ? 'block' : 'none';
+            if (reportType === 'mall-user' && typeof initMallUserDate === 'function') {
+                initMallUserDate();
+            }
+        };
+

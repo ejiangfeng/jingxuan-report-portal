@@ -1431,6 +1431,99 @@ function generateOrders(count) {
 const mockOrders = generateOrders(100);
 
 // 订单查询API
+
+// 商城用户下单查询 API
+app.post('/api/v1/reports/mall-user', async (req, res) => {
+  const { queryDate = '', mobile = '', page = 1, pageSize = 20 } = req.body;
+  const date = queryDate || new Date().toISOString().split('T')[0];
+  const offset = (page - 1) * pageSize;
+  
+  if (!pool) {
+    return res.json({ success: true, data: { list: [], total: 0, page, pageSize }, timestamp: new Date().toISOString() });
+  }
+  
+  try {
+    const conn = await pool.getConnection();
+    await conn.query("SET SESSION ob_query_timeout = 300000000");
+    
+    const params = [date, date, date, date, mobile, mobile];
+    const [rows] = await conn.query(MALL_USER_SQL, params);
+    
+    const countSql = `SELECT COUNT(DISTINCT a.user_id) as total FROM tz_user a WHERE a.user_id IN (SELECT user_id FROM tz_order WHERE is_payed = 1 AND create_time >= ? AND create_time < DATE_ADD(?, INTERVAL 1 DAY) AND station_id = 127) AND (? = '' OR user_mobile = ?)`;
+    const [[{ total }]] = await conn.query(countSql, [date, date, mobile, mobile]);
+    conn.release();
+    
+    res.json({ success: true, data: { list: rows, total, page, pageSize }, timestamp: new Date().toISOString() });
+  } catch (err) {
+    res.status(500).json({ success: false, error: '查询失败：' + err.message, timestamp: new Date().toISOString() });
+  }
+});
+
+// 商城用户下单导出 API
+app.post('/api/v1/reports/mall-user/export', async (req, res) => {
+  const params = req.body;
+  const { queryDate = '', mobile = '' } = params;
+  const date = queryDate || new Date().toISOString().split('T')[0];
+  const taskId = `mall_user_export_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const task = { id: taskId, type: 'mall-user', status: 'processing', params, created_at: new Date().toISOString(), total: 0, progress: 0 };
+  exportTasks.set(taskId, task);
+  res.json({ success: true, data: { id: taskId, status: 'processing', created_at: task.created_at, download_url: `/api/v1/exports/download/${taskId}` }, message: '导出任务已创建', timestamp: new Date().toISOString() });
+  processMallUserExport(taskId, params).catch(err => {
+    console.error('商城用户下单导出失败:', err);
+    const t = exportTasks.get(taskId);
+    if (t) { t.status = 'failed'; t.error = err.message; t.updated_at = new Date().toISOString(); }
+  });
+});
+
+async function processMallUserExport(taskId, params) {
+  const task = exportTasks.get(taskId);
+  if (!task) return;
+  const { queryDate = '', mobile = '' } = params;
+  const date = queryDate || new Date().toISOString().split('T')[0];
+  
+  let rows = [];
+  if (pool) {
+    const conn = await pool.getConnection();
+    try {
+      await conn.query("SET SESSION ob_query_timeout = 300000000");
+      const exportSql = MALL_USER_SQL;
+      const queryParams = [date, date, date, date, mobile, mobile];
+      const [result] = await conn.query(exportSql, queryParams);
+      rows = result;
+    } finally {
+      conn.release();
+    }
+  }
+  
+  task.total = rows.length;
+  task.progress = 50;
+  
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('商城用户下单查询');
+  
+  if (rows.length > 0) {
+    const headers = Object.keys(rows[0]);
+    worksheet.columns = headers.map(h => ({ header: h, key: h, width: 25 }));
+    rows.forEach(row => worksheet.addRow(row));
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
+  }
+  
+  const fileName = `商城用户下单_${date}_${taskId}.xlsx`;
+  const filePath = path.join(EXPORT_DIR, fileName);
+  await workbook.xlsx.writeFile(filePath);
+  
+  task.status = 'completed';
+  task.progress = 100;
+  task.file_name = fileName;
+  task.file_path = filePath;
+  task.file_size = fs.statSync(filePath).size;
+  task.download_url = `/api/v1/exports/download/${taskId}`;
+  task.updated_at = new Date().toISOString();
+  
+  console.log(`商城用户下单导出完成：${fileName}, ${rows.length}条记录`);
+}
+
 app.post('/api/v1/orders/query', async (req, res) => {
   const { 
     startTime, 
@@ -2019,6 +2112,30 @@ app.use((err, req, res, next) => {
     timestamp: new Date().toISOString()
   });
 });
+
+
+// 商城用户下单查询 SQL
+const MALL_USER_SQL = `
+SELECT /*+ QUERY_TIMEOUT(100000000) */
+  user_mobile AS '手机号',
+  ( SELECT /*+ QUERY_TIMEOUT(100000000) */ max( create_time ) FROM tz_order WHERE user_id = a.user_id AND create_time < ? AND is_payed = 1 AND station_id = 127 ) AS '最近下单时间',
+  ( SELECT /*+ QUERY_TIMEOUT(100000000) */ max( create_time ) FROM tz_order WHERE user_id = a.user_id AND create_time < ? AND is_payed = 1 AND station_id = 127 ) AS '鲸选商城最近下单时间'
+FROM
+  tz_user a
+WHERE
+  a.user_id IN (
+    SELECT
+      user_id
+    FROM
+      tz_order
+    WHERE
+      is_payed = 1
+      AND create_time >= ?
+      AND create_time < DATE_ADD(?, INTERVAL 1 DAY)
+      AND station_id = 127
+  )
+  AND (? = '' OR user_mobile = ?)
+`;
 
 // 启动服务器
 async function startServer() {
