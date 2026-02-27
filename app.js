@@ -285,9 +285,7 @@
                 }
             } catch (error) {
                 console.error('加载数据失败:', error);
-                // 显示模拟数据作为备选
-                renderMockOrders();
-                updatePagination();
+                showError('数据加载失败：' + error.message);
             } finally {
                 showLoading(false);
             }
@@ -497,89 +495,6 @@
             });
         }
         
-        // 渲染模拟订单数据（用于演示）
-        function renderMockOrders() {
-            const mockOrders = generateMockOrders();
-            renderOrders(mockOrders);
-        }
-        
-        // 生成模拟订单数据
-        function generateMockOrders() {
-            const statuses = ['交易成功', '待付款', '待发货', '待收货', '交易失败'];
-            const stores = [
-                { name: '北京朝阳门店', code: '1101' },
-                { name: '上海浦东门店', code: '2001' },
-                { name: '深圳南山门店', code: '3101' },
-                { name: '杭州西湖门店', code: '3301' },
-                { name: '广州天河门店', code: '4401' }
-            ];
-            
-            const orders = [];
-            const startIndex = (currentPage - 1) * pageSize;
-            
-            for (let i = startIndex; i < startIndex + Math.min(pageSize, 100 - startIndex); i++) {
-                const store = stores[Math.floor(Math.random() * stores.length)];
-                const status = statuses[Math.floor(Math.random() * statuses.length)];
-                const amount = Math.floor(Math.random() * 5000) + 100;
-                const discount = Math.floor(Math.random() * amount * 0.3);
-                const actualAmount = amount - discount;
-                
-                orders.push({
-                    订单号: `ORD${100000 + i}`,
-                    下单时间: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
-                    订单状态: status,
-                    所属门店名称: store.name,
-                    所属门店代码: store.code,
-                    商品总数量: Math.floor(Math.random() * 10) + 1,
-                    商品总金额: amount,
-                    优惠总金额: discount,
-                    客户实付金额: actualAmount
-                });
-            }
-            
-            return orders;
-        }
-        
-        // 改变页码
-        function changePage(direction) {
-            currentPage += direction;
-            loadData();
-        }
-        
-        // 更新分页信息
-        function updatePagination() {
-            const start = (currentPage - 1) * pageSize + 1;
-            const end = Math.min(currentPage * pageSize, totalOrders || 100);
-            
-            pageInfo.textContent = `${start}-${end} / ${totalOrders || 100}`;
-            prevPage.disabled = currentPage <= 1;
-            nextPage.disabled = currentPage * pageSize >= totalOrders;
-        }
-        
-        // 查看订单详情
-        window.viewDetail = async function(orderNumber) {
-            document.getElementById('detailModal').style.display = 'block';
-            const contentEl = document.getElementById('orderDetailContent');
-            contentEl.innerHTML = '加载中...';
-            
-            try {
-                const response = await fetch(`${API_BASE_URL}/orders/${orderNumber}`);
-                const result = await response.json();
-                
-                if (result.success && result.data) {
-                    const order = result.data;
-                    contentEl.innerHTML = `
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                            <div style="grid-column: 1 / -1; padding: 12px; background: #f5f5f5; border-radius: 4px;">
-                                <div style="font-size: 16px; font-weight: bold;">订单号: ${order.订单号}</div>
-                                <div style="color: #666; margin-top: 4px;">下单时间: ${formatDate(order.下单时间)}</div>
-                            </div>
-                            
-                            <div>
-                                <h4 style="margin: 0 0 8px 0; color: #1890ff;">📌 基础信息</h4>
-                                <table style="width: 100%; font-size: 13px;">
-                                    <tr><td style="color: #666; padding: 4px 0;">来源渠道:</td><td>${order.来源渠道 || '-'}</td></tr>
-                                    <tr><td style="color: #666; padding: 4px 0;">订单类型:</td><td>${order.订单类型 || '-'}</td></tr>
                                     <tr><td style="color: #666; padding: 4px 0;">订单状态:</td><td><span class="status ${order.订单状态 === '交易成功' ? 'status-success' : ''}">${order.订单状态 || '-'}</span></td></tr>
                                     <tr><td style="color: #666; padding: 4px 0;">下单人手机:</td><td>${order.下单人手机号 || '-'}</td></tr>
                                 </table>

@@ -3,7 +3,6 @@ import { asyncHandler } from '../../middleware/errorHandler'
 import { sqlTemplateManager } from '../../core/sql'
 import { connectionManager } from '../../core/database'
 import { logger } from '../../utils/logger'
-import { MockDataService } from '../../services/mock-data.service'
 import { 
   QueryParams, 
   OrderQueryParams,
@@ -63,51 +62,62 @@ export class OrderController {
         userId: (req as any).user?.id
       })
       
-      // 检查数据库连接是否可用，如果不使用模拟数据
-      const useMockData = process.env.USE_MOCK_DATA === 'true' || !connectionManager.isConnected()
-      
       let records: OrderRecord[] = []
       let total = 0
       let dbDuration = 0
       
-      if (useMockData) {
-        // 使用模拟数据
-        logger.info('使用模拟数据服务')
-        const mockService = MockDataService.getInstance()
-        const mockResult = await mockService.queryOrders(queryParams)
-        
-        records = mockResult.data as OrderRecord[]
-        total = mockResult.total
-        dbDuration = mockResult.executionTime || 0
-      } else {
-        // 使用真实数据库
-        // 2. 使用SQL处理器处理查询
-        const sqlProcessor = sqlTemplateManager.getSQLProcessor()
-        const processedSQL = sqlProcessor.processOrderQuery(queryParams)
-        
-        logger.debug('SQL处理完成', {
-          sql: processedSQL.sql.substring(0, 200) + (processedSQL.sql.length > 200 ? '...' : ''),
-          paramCount: processedSQL.params.length,
-          hasPagination: processedSQL.hasPagination
+      // 使用真实数据库查询
+      // 2. 使用 SQL 处理器处理查询
+      const sqlProcessor = sqlTemplateManager.getSQLProcessor()
+      const processedSQL = sqlProcessor.processOrderQuery(queryParams)
+      
+      logger.debug('SQL 处理完成', {
+        sql: processedSQL.sql.substring(0, 200) + (processedSQL.sql.length > 200 ? '...' : ''),
+        paramCount: processedSQL.params.length,
+        hasPagination: processedSQL.hasPagination
+      })
+      
+      // 3. 执行查询
+      const dbStartTime = Date.now()
+      const queryResult = await connectionManager.query(
+        processedSQL.sql, 
+        processedSQL.params
+      )
+      dbDuration = Date.now() - dbStartTime
+    
+      if (!queryResult.success) {
+        logger.error('数据库查询失败', {
+          error: queryResult.error,
+          sql: processedSQL.sql.substring(0, 200),
+          paramCount: processedSQL.params.length
         })
         
-        // 3. 执行查询
-        const dbStartTime = Date.now()
-        const queryResult = await connectionManager.query(
-          processedSQL.sql, 
-          processedSQL.params
-        )
-        dbDuration = Date.now() - dbStartTime
+        throw new Error(queryResult.error || '数据库查询失败')
+      }
       
-        if (!queryResult.success) {
-          logger.error('数据库查询失败', {
-            error: queryResult.error,
-            sql: processedSQL.sql.substring(0, 200),
-            paramCount: processedSQL.params.length
-          })
-          
-          throw new Error(queryResult.error || '数据库查询失败')
+      // 4. 处理查询结果
+      const processedResult = sqlProcessor.processQueryResults(
+        queryResult.data as any[]
+      )
+      
+      records = processedResult.records
+      
+      // 5. 获取总数（执行 COUNT 查询）
+      try {
+        const countSQL = sqlProcessor.processCountingSQL(queryParams)
+        const countResult = await connectionManager.query(
+          countSQL.sql, 
+          countSQL.params
+        )
+        
+        if (countResult.success && countResult.data?.[0]) {
+          total = countResult.data[0].total || 0
         }
+      } catch (countError) {
+        logger.warn('获取总数查询失败，使用分页数据估算', { 
+          error: (countError as Error).message 
+        })
+      }
         
         // 4. 处理查询结果
         const processedResult = sqlProcessor.processQueryResults(
@@ -614,24 +624,9 @@ export class OrderController {
   // 获取可用筛选选项
   static getFilterOptions = asyncHandler(async (req: Request, res: Response) => {
     try {
-      const useMockData = process.env.USE_MOCK_DATA === 'true' || !connectionManager.isConnected()
-      
-      if (useMockData) {
-        // 使用模拟服务获取筛选选项
-        const mockService = MockDataService.getInstance()
-        const result = await mockService.getFilterOptions()
-        
-        const response: ApiResponse = {
-          success: true,
-          data: result.data,
-          timestamp: new Date().toISOString()
-        }
-        
-        res.status(200).json(response)
-      } else {
-        // 使用真实数据库查询（简化版）
-        // TODO: 从数据库查询所有唯一的门店、状态等
-        const storedStores = [
+      // 使用真实数据库查询（简化版）
+      // TODO: 从数据库查询所有唯一的门店、状态等
+      const storedStores = [
           { id: '1101', name: '北京朝阳门店', outCode: '1101' },
           { id: '2001', name: '上海浦东门店', outCode: '2001' },
           { id: '3101', name: '深圳南山门店', outCode: '3101' },
@@ -693,8 +688,7 @@ export class OrderController {
         }
         
         res.status(200).json(response)
-      }
-      
+        
     } catch (error: any) {
       logger.error('获取筛选选项失败', { error: error.message })
       throw error
