@@ -1,0 +1,1 @@
+{"version":3,"file":"mock-data-generator.d.ts","sourceRoot":"","sources":["../../src/utils/mock-data-generator.ts"],"names":[],"mappings":"AAAA;;;GAGG;AAEH,OAAO,EAAE,WAAW,EAAE,MAAM,UAAU,CAAA;AA8FtC;;;;GAIG;AACH,wBAAgB,cAAc,CAAC,KAAK,EAAE,MAAM,GAAG,WAAW,EAAE,CAsH3D;AAED;;GAEG;AACH,wBAAgB,qBAAqB,CAAC,SAAS,EAAE,IAAI,EAAE,OAAO,EAAE,IAAI,EAAE,KAAK,EAAE,MAAM,GAAG,WAAW,EAAE,CAYlG"}

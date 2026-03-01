@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>鲸选自助报表平台</title>
+    <link rel="stylesheet" href="styles-new.css">
+</head>
+<body>
+    <!-- 顶部栏 -->
+    <div class="top-bar">
+        <div class="top-left">
+            <div class="logo">
+                <span class="logo-icon">📊</span>
+                <span class="logo-text">鲸选自助报表平台</span>
+            </div>
+        </div>
+        <div class="top-right">
+            <div class="user-info">
+                <span class="username">管理员</span>
+                <span class="user-avatar">👤</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <!-- 左侧导航 -->
+        <div class="sidebar">
+            <div class="sidebar-menu">
+                <!-- 订单类报表 -->
+                <div class="menu-category">
+                    <div class="category-header" onclick="toggleCategory('order-category')">
+                        <span class="category-icon">📋</span>
+                        <span class="category-name">订单类报表</span>
+                        <span class="category-arrow">▼</span>
+                    </div>
+                    <div class="category-items" id="order-category">
+                        <div class="menu-item active" data-report="order" onclick="switchReport('order')">
+                            <span class="item-icon">📄</span>
+                            <span class="item-name">订单查询</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 商品类报表 -->
+                <div class="menu-category">
+                    <div class="category-header" onclick="toggleCategory('product-category')">
+                        <span class="category-icon">🛍️</span>
+                        <span class="category-name">商品类报表</span>
+                        <span class="category-arrow">▼</span>
+                    </div>
+                    <div class="category-items" id="product-category">
+                        <div class="menu-item" data-report="penetration" onclick="switchReport('penetration')">
+                            <span class="item-icon">📊</span>
+                            <span class="item-name">商品渗透率</span>
+                        </div>
+                        <div class="menu-item" data-report="search" onclick="switchReport('search')">
+                            <span class="item-icon">🔍</span>
+                            <span class="item-name">搜索关键词查询</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 营销类报表 -->
+                <div class="menu-category">
+                    <div class="category-header" onclick="toggleCategory('marketing-category')">
+                        <span class="category-icon">🎯</span>
+                        <span class="category-name">营销类报表</span>
+                        <span class="category-arrow">▼</span>
+                    </div>
+                    <div class="category-items" id="marketing-category">
+                        <div class="menu-item" data-report="coupon" onclick="switchReport('coupon')">
+                            <span class="item-icon">🎫</span>
+                            <span class="item-name">优惠券领用核销</span>
+                        </div>
+                        <div class="menu-item" data-report="freight" onclick="switchReport('freight')">
+                            <span class="item-icon">🚚</span>
+                            <span class="item-name">免运活动查询</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 用户类报表 -->
+                <div class="menu-category">
+                    <div class="category-header" onclick="toggleCategory('user-category')">
+                        <span class="category-icon">👥</span>
+                        <span class="category-name">用户类报表</span>
+                        <span class="category-arrow">▼</span>
+                    </div>
+                    <div class="category-items" id="user-category">
+                        <div class="menu-item" data-report="invitation" onclick="switchReport('invitation')">
+                            <span class="item-icon">👥</span>
+                            <span class="item-name">社群拉新</span>
+                        </div>
+                        <div class="menu-item" data-report="mall-user" onclick="switchReport('mall-user')">
+                            <span class="item-icon">🛒</span>
+                            <span class="item-name">商城用户下单</span>
+                        </div>
+                        <div class="menu-item" data-report="support" onclick="switchReport('support')">
+                            <span class="item-icon">🤝</span>
+                            <span class="item-name">助力活动查询</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="content-area">
+            <!-- 订单查询报表 -->
+            <div id="report-order" class="report-panel active">
+                <div class="report-header">
+                    <h1 class="report-title">📄 订单查询</h1>
+                    <div class="report-description">多维度订单数据查询，支持订单汇总和明细导出</div>
+                </div>
+
+                <!-- 筛选条件 -->
+                <div class="filter-section">
+                    <div class="filter-title">筛选条件</div>
+                    <div class="filter-grid">
+                        <div class="filter-item">
+                            <label>日期大于等于</label>
+                            <input type="date" id="orderStartDate" value="2026-01-01">
+                        </div>
+                        <div class="filter-item">
+                            <label>日期小于</label>
+                            <input type="date" id="orderEndDate" value="2026-01-31">
+                        </div>
+                        <div class="filter-item">
+                            <label>订单状态</label>
+                            <select id="orderStatus">
+                                <option value="">全部状态</option>
+                                <option value="待付款">待付款</option>
+                                <option value="待发货">待发货</option>
+                                <option value="待收货">待收货</option>
+                                <option value="交易成功">交易成功</option>
+                                <option value="交易失败">交易失败</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label>门店代码</label>
+                            <input type="text" id="orderStoreCode" placeholder="输入门店代码，多个用逗号分隔">
+                        </div>
+                        <div class="filter-item">
+                            <label>订单号</label>
+                            <input type="text" id="orderNumber" placeholder="输入订单号，多个用逗号分隔">
+                        </div>
+                        <div class="filter-item">
+                            <label>商品编码</label>
+                            <input type="text" id="productCode" placeholder="输入商品编码">
+                        </div>
+                    </div>
+                    <div class="filter-actions">
+                        <button class="btn-primary" id="orderSearchBtn">🔍 搜索</button>
+                        <button class="btn-default" id="orderResetBtn">🔄 恢复默认</button>
+                        <button class="btn-default" id="orderClearBtn">🗑️ 清除</button>
+                        <button class="btn-link" id="orderAdvancedBtn">高级查询</button>
+                    </div>
+                </div>
+
+                <!-- 数据表格 -->
+                <div class="table-section">
+                    <div class="table-toolbar">
+                        <div class="toolbar-left">
+                            <span class="table-title">查询结果</span>
+                            <span class="table-count">共 <span id="orderTotal">0</span> 条</span>
+                        </div>
+                        <div class="toolbar-right">
+                            <button class="btn-toolbar" id="orderExportCurrent">📤 导出当前页</button>
+                            <button class="btn-toolbar" id="orderExportAll">📥 导出</button>
+                            <button class="btn-toolbar" id="orderPrint">🖨️ 打印</button>
+                            <button class="btn-toolbar" id="orderFunc">🔧 功能</button>
+                        </div>
+                    </div>
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>行号</th>
+                                    <th>订单号</th>
+                                    <th>下单时间</th>
+                                    <th>订单状态</th>
+                                    <th>门店代码</th>
+                                    <th>商品总金额</th>
+                                    <th>优惠金额</th>
+                                    <th>实付金额</th>
+                                    <th>支付方式</th>
+                                </tr>
+                            </thead>
+                            <tbody id="orderTableBody">
+                                <tr>
+                                    <td colspan="9" class="empty-data">暂无数据，请点击搜索</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="table-pagination">
+                        <div class="pagination-left">
+                            <button class="page-btn" disabled>⏮️</button>
+                            <button class="page-btn" disabled>◀️</button>
+                            <span class="page-info">第 <span id="orderCurrentPage">0</span> 页 共 <span id="orderTotalPages">1</span> 页</span>
+                            <button class="page-btn">▶️</button>
+                            <button class="page-btn">⏭️</button>
+                        </div>
+                        <div class="pagination-right">
+                            <span>每页</span>
+                            <select class="page-size">
+                                <option value="20">20</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                            <span>条</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 商品渗透率报表 -->
+            <div id="report-penetration" class="report-panel">
+                <div class="report-header">
+                    <h1 class="report-title">📊 商品渗透率</h1>
+                    <div class="report-description">分析商品在门店的销售渗透情况</div>
+                </div>
+                <div class="filter-section">
+                    <div class="filter-title">筛选条件</div>
+                    <div class="filter-grid">
+                        <div class="filter-item">
+                            <label>日期大于等于</label>
+                            <input type="date" id="penStartDate">
+                        </div>
+                        <div class="filter-item">
+                            <label>日期小于</label>
+                            <input type="date" id="penEndDate">
+                        </div>
+                        <div class="filter-item" style="flex: 2;">
+                            <label>门店代码</label>
+                            <input type="text" id="penStoreCode" placeholder="输入门店代码，多个用逗号分隔">
+                        </div>
+                    </div>
+                    <div class="filter-actions">
+                        <button class="btn-primary">🔍 搜索</button>
+                        <button class="btn-default">🔄 恢复默认</button>
+                        <button class="btn-default">🗑️ 清除</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 搜索关键词查询报表 -->
+            <div id="report-search" class="report-panel">
+                <div class="report-header">
+                    <h1 class="report-title">🔍 搜索关键词查询</h1>
+                    <div class="report-description">查询用户搜索关键词数据</div>
+                </div>
+                <div class="filter-section">
+                    <div class="filter-title">筛选条件</div>
+                    <div class="filter-grid">
+                        <div class="filter-item">
+                            <label>日期大于等于</label>
+                            <input type="date" id="searchStartDate">
+                        </div>
+                        <div class="filter-item">
+                            <label>日期小于</label>
+                            <input type="date" id="searchEndDate">
+                        </div>
+                        <div class="filter-item" style="flex: 2;">
+                            <label>搜索关键词</label>
+                            <input type="text" id="searchKeywords" placeholder="输入搜索关键词，多个用逗号分隔">
+                        </div>
+                    </div>
+                    <div class="filter-actions">
+                        <button class="btn-primary">🔍 搜索</button>
+                        <button class="btn-default">🔄 恢复默认</button>
+                        <button class="btn-default">🗑️ 清除</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 其他报表占位 -->
+            <div id="report-coupon" class="report-panel">
+                <div class="report-header">
+                    <h1 class="report-title">🎫 优惠券领用核销</h1>
+                    <div class="report-description">查询优惠券领用和核销记录</div>
+                </div>
+            </div>
+
+            <div id="report-freight" class="report-panel">
+                <div class="report-header">
+                    <h1 class="report-title">🚚 免运活动查询</h1>
+                    <div class="report-description">查询免运费活动使用记录</div>
+                </div>
+            </div>
+
+            <div id="report-invitation" class="report-panel">
+                <div class="report-header">
+                    <h1 class="report-title">👥 社群拉新</h1>
+                    <div class="report-description">查询社群拉新活动助力记录</div>
+                </div>
+            </div>
+
+            <div id="report-mall-user" class="report-panel">
+                <div class="report-header">
+                    <h1 class="report-title">🛒 商城用户下单</h1>
+                    <div class="report-description">查询商城用户下单行为</div>
+                </div>
+            </div>
+
+            <div id="report-support" class="report-panel">
+                <div class="report-header">
+                    <h1 class="report-title">🤝 助力活动查询</h1>
+                    <div class="report-description">查询各类助力活动的参与记录</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app-new.js"></script>
+</body>
+</html>

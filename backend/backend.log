@@ -1,0 +1,23 @@
+=========================================
+  鲸选报表平台后端服务
+=========================================
+🚀 服务已启动: http://localhost:4000
+📊 健康检查: http://localhost:4000/api/v1/health
+📋 API端点: 100 条模拟订单已加载
+⏰ 启动时间: 2026-02-16T13:34:20.218Z
+=========================================
+服务器错误: TypeError [ERR_INVALID_CHAR]: Invalid character in header content ["X-Powered-By"]
+    at ServerResponse.setHeader (node:_http_outgoing:645:3)
+    at /Users/ejiangfeng/鲸选部门数据查询需求/jingxuan-report-portal/backend/simple-server.js:17:7
+    at Layer.handle [as handle_request] (/Users/ejiangfeng/鲸选部门数据查询需求/jingxuan-report-portal/backend/node_modules/express/lib/router/layer.js:95:5)
+    at trim_prefix (/Users/ejiangfeng/鲸选部门数据查询需求/jingxuan-report-portal/backend/node_modules/express/lib/router/index.js:328:13)
+    at /Users/ejiangfeng/鲸选部门数据查询需求/jingxuan-report-portal/backend/node_modules/express/lib/router/index.js:286:9
+    at router.process_params (/Users/ejiangfeng/鲸选部门数据查询需求/jingxuan-report-portal/backend/node_modules/express/lib/router/index.js:346:12)
+    at next (/Users/ejiangfeng/鲸选部门数据查询需求/jingxuan-report-portal/backend/node_modules/express/lib/router/index.js:280:10)
+    at urlencodedParser (/Users/ejiangfeng/鲸选部门数据查询需求/jingxuan-report-portal/backend/node_modules/body-parser/lib/types/urlencoded.js:91:7)
+    at Layer.handle [as handle_request] (/Users/ejiangfeng/鲸选部门数据查询需求/jingxuan-report-portal/backend/node_modules/express/lib/router/layer.js:95:5)
+    at trim_prefix (/Users/ejiangfeng/鲸选部门数据查询需求/jingxuan-report-portal/backend/node_modules/express/lib/router/index.js:328:13) {
+  code: 'ERR_INVALID_CHAR'
+}
+
+收到终止信号，正在关闭服务器...

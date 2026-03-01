@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>鲸选自助报表平台 - 订单查询系统</title>
+    <link rel="icon" type="image/png" href="鲸选图标.png">
+    <link rel="stylesheet" href="styles.css?v=20260227d">
+</head>
+<body>
+    <!-- 导航栏 -->
+    <div style="background: #001529; padding: 0 20px;">
+        <div style="display: flex; align-items: center; max-width: 1400px; margin: 0 auto;">
+            <div style="color: white; font-size: 18px; font-weight: bold; padding: 16px 0; margin-right: 40px; display: flex; align-items: center; gap: 8px;">
+                <span>鲸选自助报表平台</span>
+            </div>
+            <nav style="display: flex; gap: 8px;">
+                <a href="#" data-report-type="order" id="nav-order" class="nav-link active">📋 订单查询</a>
+                <a href="#" data-report-type="penetration" id="nav-penetration" class="nav-link">📊 商品渗透率</a>
+                <a href="#" data-report-type="coupon" id="nav-coupon" class="nav-link">🎫 优惠券领用核销</a>
+                <a href="#" data-report-type="freight" id="nav-freight" class="nav-link">🚚 免运活动查询</a>
+                <a href="#" data-report-type="invitation" id="nav-invitation" class="nav-link">👥 社群拉新</a>
+                <a href="#" data-report-type="mall-user" id="nav-mall-user" class="nav-link">🛒 商城用户下单</a>            </nav>
+        </div>
+    </div>
+    
+    <!-- 订单查询报表 -->
+    <div id="order-report" class="container">
+        <div class="header">
+            <div class="title">
+                <div class="logo">📋</div>
+                <div>
+                    <h1>订单查询</h1>
+                    <div style="color: #666; font-size: 14px;">多维度订单数据查询</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="filters">
+            <h3>📊 查询筛选</h3>
+            <div class="filter-group">
+                <div class="filter-item">
+                    <label>开始日期</label>
+                    <div class="input-wrapper date-input">
+                        <input type="date" id="startDate" value="2026-01-01">
+                        <span class="clear-icon" data-clear-input></span>
+                    </div>
+                </div>
+                <div class="filter-item">
+                    <label>结束日期</label>
+                    <div class="input-wrapper date-input">
+                        <input type="date" id="endDate" value="2026-01-31">
+                        <span class="clear-icon" data-clear-input></span>
+                    </div>
+                </div>
+                <div class="filter-item">
+                    <label>订单状态</label>
+                    <div class="input-wrapper">
+                        <select id="status">
+                            <option value="">全部状态</option>
+                            <option value="待付款">待付款</option>
+                            <option value="待发货">待发货</option>
+                            <option value="待收货">待收货</option>
+                            <option value="交易成功">交易成功</option>
+                            <option value="交易失败">交易失败</option>
+                        </select>
+                        <span class="clear-icon" data-clear-input></span>
+                    </div>
+                </div>
+                <div class="filter-item">
+                    <label>门店代码</label>
+                    <div class="input-wrapper">
+                        <input type="text" id="storeCode" placeholder="输入门店代码（多个用逗号分隔）">
+                        <span class="clear-icon" data-clear-input></span>
+                    </div>
+                </div>
+            </div>
+            <div class="filter-group" style="margin-top: 12px;">
+                <div class="filter-item">
+                    <label>订单号</label>
+                    <div class="input-wrapper">
+                        <input type="text" id="orderNumber" placeholder="输入订单号（多个用逗号分隔）">
+                        <span class="clear-icon" data-clear-input></span>
+                    </div>
+                </div>
+                <div class="filter-item">
+                    <label>商品编码</label>
+                    <div class="input-wrapper">
+                        <input type="text" id="productCode" placeholder="输入商品编码">
+                        <span class="clear-icon" data-clear-input></span>
+                    </div>
+                </div>
+                <div class="filter-item">
+                    <label>商品条码</label>
+                    <div class="input-wrapper">
+                        <input type="text" id="barCode" placeholder="输入商品条码">
+                        <span class="clear-icon" data-clear-input></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="actions">
+            <button class="btn-primary" id="searchBtn">查询订单</button>
+            <button class="btn-secondary" id="exportBtn">导出查询结果</button>
+            <button class="btn-secondary" id="viewExportsBtn">📋 导出任务</button>
+            <button class="btn-secondary" id="clearBtn">清空筛选</button>
+        </div>
+        
+        <div id="loading" class="loading" style="display: none;">
+            正在加载数据，请稍候...
+        </div>
+        
+        <table id="ordersTable">
+            <thead>
+                <tr>
+                    <th>订单号</th>
+                    <th>下单时间</th>
+                    <th>订单状态</th>
+                    <th>门店</th>
+                    <th>商品金额</th>
+                    <th>优惠券</th>
+                    <th>实付金额</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="ordersBody">
+            </tbody>
+        </table>
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+            <div>
+                显示 <span id="pageInfo">--</span> 条订单
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button class="btn-secondary" id="prevPage" disabled>上一页</button>
+                <button class="btn-secondary" id="nextPage" disabled>下一页</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 商品渗透率报表 -->
+    <div id="penetration-report" class="container" style="display: none;">
+        <div class="header">
+            <div class="title">
+                <div class="logo">📊</div>
+                <div>
+                    <h1>商品渗透率报表</h1>
+                    <div style="color: #666; font-size: 14px;">分析商品在门店的销售渗透情况</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="filters">
+            <h3>📊 查询筛选</h3>
+            <div class="filter-group">
+                <div class="filter-item">
+                    <label>开始日期</label>
+                    <div class="input-wrapper date-input">
+                        <input type="date" id="penStartDate">
+                        <span class="clear-icon" data-clear-input></span>
+                    </div>
+                </div>
+                <div class="filter-item">
+                    <label>结束日期</label>
+                    <div class="input-wrapper date-input">
+                        <input type="date" id="penEndDate">
+                        <span class="clear-icon" data-clear-input></span>
+                    </div>
+                </div>
+                <div class="filter-item" style="flex: 2;">
+                    <label>门店代码</label>
+                    <div class="input-wrapper">
+                        <input type="text" id="penStoreCode" value="2625,1405,9976,3355,6591,4846,3362,9151,9394,1510,1374,3012,6688,4727,1737,7867,9933,3040,8422,7420,3365,3481,3910,1399,3971,5875,7928,9687,3367,8765,1571,7754,5876,3019,7378,3452,7689,3483,8075,1438,4647,9424,9765,1340,8066,6016,4718,3091,1313,1463,1722,8142,1433,5893,3089,8172,1576,7868,3456,3379,1321,9681,3496,1435,3074,9676,1521,6710,3043,9677,9920,1420,3385,1508,1444,3368,2246,3369,3455,1392,1308,1483,3449,3505,1481,1458,3383,3654,8328,3359,1501,1741,1373,1522,1332,1415,1325,3376,7732,1487,1739,7853,3900,2947,1490,3406,3011,1556,1557,1566,1512,1565,1615,1617,1616,1832,1882,1932" placeholder="输入门店代码（多个用逗号分隔）">
+                        <span class="clear-icon" data-clear-input></span>
+                    </div>
+                </div>
+            </div>
+            <div class="filter-group" style="margin-top: 12px;">
+                <div class="filter-item">
+                    <label>商品条码</label>
+                    <div class="input-wrapper">
+                        <input type="text" id="penBarCode" placeholder="输入商品条码（多个用逗号分隔）">
+                        <span class="clear-icon" data-clear-input></span>
+                    </div>
+                </div>
+                <div class="filter-item">
+                    <label>商品编码</label>
+                    <div class="input-wrapper">
+                        <input type="text" id="penPartyCode" placeholder="输入商品编码（多个用逗号分隔）">
+                        <span class="clear-icon" data-clear-input></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="actions">
+            <button class="btn-primary" id="penSearchBtn">查询报表</button>
+            <button class="btn-secondary" id="penExportBtn">导出查询结果</button>
+            <button class="btn-secondary" id="penViewExportsBtn">📋 导出任务</button>
+            <button class="btn-secondary" id="penClearBtn">清空筛选</button>
+        </div>
+        
+        <div id="penLoading" class="loading" style="display: none;">
+            正在加载数据，请稍候...
+        </div>
+        
+        <div style="margin: 16px 0; color: #666;">
+            查询结果: <span id="penTotalCount">--</span> 条商品记录 | 
+            执行时间: <span id="penExecTime">--</span>ms
+        </div>
+        
+        <div style="overflow-x: auto;">
+            <table id="penetrationTable" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>
+                    <tr style="background: #fafafa;">
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8;">大类编码</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8;">大类名称</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8;">商品编码</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8;">商品条码</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8;">商品名称</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8;">规格</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8; text-align: right;">购买数量</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8; text-align: right;">商品订单量</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8; text-align: right;">商品用户数</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8; text-align: right;">大类订单渗透率</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8; text-align: right;">大类用户渗透率</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8; text-align: right;">全局订单渗透率</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8; text-align: right;">全局用户渗透率</th>
+                    </tr>
+                </thead>
+                <tbody id="penetrationBody">
+                </tbody>
+            </table>
+        </div>
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+            <div>
+                显示 <span id="penPageInfo">--</span> 条商品
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button class="btn-secondary" id="penPrevPage" disabled>上一页</button>
+                <button class="btn-secondary" id="penNextPage" disabled>下一页</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 优惠券领用核销报表 -->
+    <div id="coupon-report" class="container" style="display: none;">
+        <div class="header">
+            <div class="title">
+                <div class="logo">🎫</div>
+                <div>
+                    <h1>优惠券领用核销查询</h1>
+                    <div style="color: #666; font-size: 14px;">查询优惠券领用和核销记录</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="filters">
+            <h3>🎫 查询筛选</h3>
+            <div style="background: #fffbe6; border: 1px solid #ffe58f; border-radius: 4px; padding: 8px 12px; margin-bottom: 12px; font-size: 13px; color: #8c8c8c;">
+                ⚠️ 领用日期和核销日期至少需要填写其中一项
+            </div>
+            <div class="filter-group">
+                <div class="filter-item">
+                    <label>领用开始日期</label>
+                    <div class="input-wrapper date-input">
+                        <input type="date" id="couponReceiveStart">
+                        <span class="clear-icon" data-clear-input></span>
+                    </div>
+                </div>
+                <div class="filter-item">
+                    <label>领用结束日期</label>
+                    <div class="input-wrapper date-input">
+                        <input type="date" id="couponReceiveEnd">
+                        <span class="clear-icon" data-clear-input></span>
+                    </div>
+                </div>
+                <div class="filter-item">
+                    <label>核销开始日期</label>
+                    <div class="input-wrapper date-input">
+                        <input type="date" id="couponUseStart">
+                        <span class="clear-icon" data-clear-input></span>
+                    </div>
+                </div>
+                <div class="filter-item">
+                    <label>核销结束日期</label>
+                    <div class="input-wrapper date-input">
+                        <input type="date" id="couponUseEnd">
+                        <span class="clear-icon" data-clear-input></span>
+                    </div>
+                </div>
+            </div>
+            <div class="filter-group" style="margin-top: 12px;">
+                <div class="filter-item">
+                    <label>优惠券ID</label>
+                    <div class="input-wrapper">
+                        <input type="text" id="couponIds" placeholder="输入优惠券ID（多个用逗号分隔）">
+                        <span class="clear-icon" data-clear-input></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="actions">
+            <button class="btn-primary" id="couponSearchBtn">查询报表</button>
+            <button class="btn-secondary" id="couponExportBtn">导出查询结果</button>
+            <button class="btn-secondary" id="couponViewExportsBtn">📋 导出任务</button>
+            <button class="btn-secondary" id="couponClearBtn">清空筛选</button>
+        </div>
+        
+        <div id="couponLoading" class="loading" style="display: none;">
+            正在加载数据，请稍候...
+        </div>
+        
+        <div style="margin: 16px 0; color: #666;">
+            查询结果: <span id="couponTotalCount">--</span> 条记录 | 
+            执行时间: <span id="couponExecTime">--</span>ms
+        </div>
+        
+        <div style="overflow-x: auto;">
+            <table id="couponTable" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>
+                    <tr style="background: #fafafa;">
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8;">用户手机号</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8;">优惠券ID</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8;">优惠券名称</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8;">领券时间</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8;">生效时间</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8;">失效时间</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8;">订单编号</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8;">配送方式</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8;">下单时间</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8; text-align: right;">商品总金额</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8; text-align: right;">优惠总金额</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8; text-align: right;">实付金额</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8;">门店编码</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8;">门店名称</th>
+                    </tr>
+                </thead>
+                <tbody id="couponBody">
+                </tbody>
+            </table>
+        </div>
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+            <div>
+                显示 <span id="couponPageInfo">--</span> 条记录
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button class="btn-secondary" id="couponPrevPage" disabled>上一页</button>
+                <button class="btn-secondary" id="couponNextPage" disabled>下一页</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 免运活动查询报表 -->
+    <div id="freight-report" class="container" style="display: none;">
+        <div class="header">
+            <div class="title">
+                <div class="logo">🚚</div>
+                <div>
+                    <h1>免运活动查询</h1>
+                    <div style="color: #666; font-size: 14px;">查询免运费活动使用记录</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="filters">
+            <h3>🚚 查询筛选</h3>
+            <div class="filter-group">
+                <div class="filter-item">
+                    <label>开始日期</label>
+                    <div class="input-wrapper date-input">
+                        <input type="date" id="freightStartDate">
+                        <span class="clear-icon" data-clear-input></span>
+                    </div>
+                </div>
+                <div class="filter-item">
+                    <label>结束日期</label>
+                    <div class="input-wrapper date-input">
+                        <input type="date" id="freightEndDate">
+                        <span class="clear-icon" data-clear-input></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="actions">
+            <button class="btn-primary" id="freightSearchBtn">查询报表</button>
+            <button class="btn-secondary" id="freightExportBtn">导出查询结果</button>
+            <button class="btn-secondary" id="freightViewExportsBtn">📋 导出任务</button>
+            <button class="btn-secondary" id="freightClearBtn">清空筛选</button>
+        </div>
+        
+        <div id="freightLoading" class="loading" style="display: none;">
+            正在加载数据，请稍候...
+        </div>
+        
+        <div style="margin: 16px 0; color: #666;">
+            查询结果: <span id="freightTotalCount">--</span> 条记录 | 
+            执行时间: <span id="freightExecTime">--</span>ms
+        </div>
+        
+        <div style="overflow-x: auto;">
+            <table id="freightTable" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>
+                    <tr style="background: #fafafa;">
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8;">活动ID</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8;">活动名称</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8;">订单编号</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8;">下单时间</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8;">门店编码</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8;">门店名称</th>
+                    </tr>
+                </thead>
+                <tbody id="freightBody">
+                </tbody>
+            </table>
+        </div>
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+            <div>
+                显示 <span id="freightPageInfo">--</span> 条记录
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button class="btn-secondary" id="freightPrevPage" disabled>上一页</button>
+                <button class="btn-secondary" id="freightNextPage" disabled>下一页</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 社群拉新报表 -->
+    <div id="invitation-report" class="container" style="display: none;">
+        <div class="header">
+            <div class="title">
+                <div class="logo">👥</div>
+                <div>
+                    <h1>社群拉新</h1>
+                    <div style="color: #666; font-size: 14px;">查询社群拉新活动助力记录</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="filters">
+            <h3>👥 查询筛选</h3>
+            <div class="filter-group">
+                <div class="filter-item">
+                    <label>开始日期</label>
+                    <div class="input-wrapper date-input">
+                        <input type="date" id="invitationStartDate">
+                        <span class="clear-icon" data-clear-input></span>
+                    </div>
+                </div>
+                <div class="filter-item">
+                    <label>结束日期</label>
+                    <div class="input-wrapper date-input">
+                        <input type="date" id="invitationEndDate">
+                        <span class="clear-icon" data-clear-input></span>
+                    </div>
+                </div>
+                <div class="filter-item">
+                    <label>活动ID</label>
+                    <div class="input-wrapper">
+                        <input type="text" id="invitationActivityIds" placeholder="输入活动ID（多个用逗号分隔）">
+                        <span class="clear-icon" data-clear-input></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="actions">
+            <button class="btn-primary" id="invitationSearchBtn">查询报表</button>
+            <button class="btn-secondary" id="invitationExportBtn">导出查询结果</button>
+            <button class="btn-secondary" id="invitationViewExportsBtn">📋 导出任务</button>
+            <button class="btn-secondary" id="invitationClearBtn">清空筛选</button>
+        </div>
+        
+        <div id="invitationLoading" class="loading" style="display: none;">
+            正在加载数据，请稍候...
+        </div>
+        
+        <div style="margin: 16px 0; color: #666;">
+            查询结果: <span id="invitationTotalCount">--</span> 条记录 | 
+            执行时间: <span id="invitationExecTime">--</span>ms
+        </div>
+        
+        <div style="overflow-x: auto;">
+            <table id="invitationTable" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>
+                    <tr style="background: #fafafa;">
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8;">活动ID</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8;">活动名称</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8;">发起ID</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8;">发起用户ID</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8;">用户手机</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8;">助力用户ID</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8;">助力用户手机</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8;">助力时间</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8;">更新时间</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8;">状态</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8;">失败原因</th>
+                    </tr>
+                </thead>
+                <tbody id="invitationBody">
+                </tbody>
+            </table>
+        </div>
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+            <div>
+                显示 <span id="invitationPageInfo">--</span> 条记录
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button class="btn-secondary" id="invitationPrevPage" disabled>上一页</button>
+                <button class="btn-secondary" id="invitationNextPage" disabled>下一页</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 商城用户下单查询 -->
+    <div id="mall-user-report" class="container" style="display: none;">
+        <div class="header">
+            <div class="title">
+                <div class="logo">🛒</div>
+                <div>
+                    <h1>商城用户下单查询</h1>
+                    <div style="color: #666; font-size: 14px;">查询商城用户最近下单记录</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="filters">
+            <h3>🛒 查询筛选</h3>
+            <div class="filter-group">
+                <div class="filter-item">
+                    <label>查询日期</label>
+                    <div class="input-wrapper date-input">
+                        <input type="date" id="mallUserDate">
+                        <span class="clear-icon" data-clear-input></span>
+                    </div>
+                </div>
+                <div class="filter-item">
+                    <label>手机号</label>
+                    <div class="input-wrapper">
+                        <input type="text" id="mallUserMobile" placeholder="输入手机号">
+                        <span class="clear-icon" data-clear-input></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="actions">
+            <button class="btn-primary" id="mallUserSearchBtn">查询报表</button>
+            <button class="btn-secondary" id="mallUserExportBtn">导出查询结果</button>
+            <button class="btn-secondary" id="mallUserViewExportsBtn">📋 导出任务</button>
+            <button class="btn-secondary" id="mallUserClearBtn">清空筛选</button>
+        </div>
+        
+        <div id="mallUserLoading" class="loading" style="display: none;">
+            正在加载数据，请稍候...
+        </div>
+        
+        <div style="margin: 16px 0; color: #666;">
+            查询结果：<span id="mallUserTotalCount">--</span> 条记录
+        </div>
+        
+        <div style="overflow-x: auto;">
+            <table id="mallUserTable" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>
+                    <tr style="background: #fafafa;">
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8;">手机号</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8;">最近下单时间</th>
+                        <th style="padding: 12px; border-bottom: 1px solid #e8e8e8;">鲸选商城最近下单时间</th>
+                    </tr>
+                </thead>
+                <tbody id="mallUserBody">
+                </tbody>
+            </table>
+        </div>
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+            <div>
+                显示 <span id="mallUserPageInfo">--</span> 条记录
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button class="btn-secondary" id="mallUserPrevPage" disabled>上一页</button>
+                <button class="btn-secondary" id="mallUserNextPage" disabled>下一页</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- 导出类型选择弹窗 -->
+    <div id="exportTypeModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 24px; border-radius: 8px; min-width: 400px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0;">📤 选择导出类型</h3>
+                 <button data-action="close-export-type" style="border: none; background: none; font-size: 20px; cursor: pointer;">&times;</button>
+             </div>
+             <div style="display: flex; flex-direction: column; gap: 12px;">
+                 <button data-action="export" data-export-type="order" style="padding: 16px; border: 1px solid #d9d9d9; border-radius: 6px; background: #fafafa; cursor: pointer; text-align: left;">
+                     <div style="font-weight: bold; color: #333; margin-bottom: 4px;">📋 导出订单</div>
+                     <div style="font-size: 12px; color: #666;">导出订单汇总数据，包含订单基本信息、金额、支付方式等</div>
+                 </button>
+                 <button data-action="export" data-export-type="order-detail" style="padding: 16px; border: 1px solid #d9d9d9; border-radius: 6px; background: #fafafa; cursor: pointer; text-align: left;">
+                     <div style="font-weight: bold; color: #333; margin-bottom: 4px;">📦 导出订单明细</div>
+                     <div style="font-size: 12px; color: #666;">导出订单商品明细，包含每个订单中的商品信息、数量、价格等</div>
+                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 导出任务弹窗 (全局) -->
+    <div id="exportModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 24px; border-radius: 8px; min-width: 600px; max-height: 80vh; overflow: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="margin: 0;">📋 导出任务列表</h3>
+                 <button data-action="close-export" style="border: none; background: none; font-size: 20px; cursor: pointer;">&times;</button>
+             </div>
+             <div id="exportTasksList">加载中...</div>
+             <div style="margin-top: 16px; text-align: right;">
+                 <button class="btn-secondary" data-action="refresh-export-tasks">刷新列表</button>
+                 <button class="btn-secondary" data-action="close-export">关闭</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 订单详情弹窗 (全局) -->
+    <div id="detailModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 24px; border-radius: 8px; min-width: 700px; max-width: 900px; max-height: 85vh; overflow: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="margin: 0;">📦 订单详情</h3>
+                 <button data-action="close-detail" style="border: none; background: none; font-size: 20px; cursor: pointer;">&times;</button>
+             </div>
+             <div id="orderDetailContent">加载中...</div>
+             <div style="margin-top: 16px; text-align: right;">
+                 <button class="btn-secondary" data-action="close-detail">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js?v=20260227d"></script>
+</body>
+</html>

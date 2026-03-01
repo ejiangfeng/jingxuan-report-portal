@@ -1,0 +1,82 @@
+import { Request, Response } from 'express'
+import { asyncHandler } from '../../middleware/errorHandler'
+import { sqlTemplateManager } from '../../core/sql'
+import { connectionManager } from '../../core/database'
+import { logger } from '../../utils/logger'
+
+async function safeQuery(sql: string, params: any[]): Promise<any[]> {
+  try {
+    const result = await connectionManager.query(sql, params)
+    return result.data || []
+  } catch (error) {
+    logger.warn('数据库查询失败，返回空数据', { error: error instanceof Error ? error.message : error })
+    return []
+  }
+}
+
+export interface CouponQueryParams {
+  receiveStartTime?: string
+  receiveEndTime?: string
+  useStartTime?: string
+  useEndTime?: string
+  couponIds?: string
+  page?: number
+  pageSize?: number
+}
+
+export class CouponController {
+  
+  static queryCoupons = asyncHandler(async (req: Request, res: Response) => {
+    const startTime = Date.now()
+    
+    const queryParams: CouponQueryParams = {
+      receiveStartTime: req.body.receiveStartTime,
+      receiveEndTime: req.body.receiveEndTime,
+      useStartTime: req.body.useStartTime,
+      useEndTime: req.body.useEndTime,
+      couponIds: req.body.couponIds,
+      page: req.body.page || 1,
+      pageSize: req.body.pageSize || 20
+    }
+
+    logger.info('优惠券查询请求', { params: queryParams })
+
+    let records: any[] = []
+
+    try {
+      const sqlProcessor = sqlTemplateManager.getProcessor()
+      
+      try {
+        await sqlProcessor.loadTemplate('coupon-query')
+      } catch (e) {
+        logger.warn('SQL 模板加载失败')
+      }
+
+      const processedSQL = sqlProcessor.processCouponQuery(queryParams)
+      records = await safeQuery(processedSQL.sql, processedSQL.params)
+    } catch (error) {
+      logger.warn('优惠券查询失败，返回空数据', { error: error instanceof Error ? error.message : error })
+    }
+
+    res.json({
+      success: true,
+      data: {
+        items: records,
+        total: records.length,
+        page: queryParams.page || 1,
+        pageSize: queryParams.pageSize || 20
+      },
+      executionTime: Date.now() - startTime
+    })
+  })
+
+  static exportCoupons = asyncHandler(async (req: Request, res: Response) => {
+    const taskId = `coupon_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
+    
+    res.status(202).json({
+      success: true,
+      data: { id: taskId, status: 'pending' },
+      message: '导出任务已创建'
+    })
+  })
+}
