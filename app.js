@@ -1,28 +1,3 @@
-// 报表切换函数
-window.switchReport = function(reportType) {
-    // 更新导航状态
-    document.querySelectorAll('.menu-item').forEach(item => {
-        item.classList.remove('active');
-    });
-    document.querySelector(`[data-report="${reportType}"]`).classList.add('active');
-    
-    // 切换报表显示
-    document.querySelectorAll('.report-panel').forEach(panel => {
-        panel.classList.remove('active');
-    });
-    document.getElementById(`report-${reportType}`).classList.add('active');
-    
-    // 初始化日期
-    if (reportType === 'penetration' && typeof initPenetrationDates === 'function') {
-        initPenetrationDates();
-    }
-    
-    if (reportType === 'search' && typeof initSearchDates === 'function') {
-        initSearchDates();
-    }
-    
-    console.log('切换到报表:', reportType);
-}
 
 // 分类展开/收起
 window.toggleCategory = function(categoryId) {
@@ -260,21 +235,6 @@ let supportCurrentPage = 1;
 const supportPageSize = 20;
 let supportTotalRecords = 0;
 
-function initSupportDates() {
-    const today = new Date();
-    const t7 = new Date(today);
-    t7.setDate(t7.getDate() - 7);
-    
-    const supportStartDate = document.getElementById('supportStartDate');
-    const supportEndDate = document.getElementById('supportEndDate');
-    
-    if (!supportStartDate.value) {
-        supportStartDate.value = t7.toISOString().split('T')[0];
-    }
-    if (!supportEndDate.value) {
-        supportEndDate.value = today.toISOString().split('T')[0];
-    }
-}
 
 // 助力活动查询
 async function loadSupportData() {
@@ -362,32 +322,15 @@ function changeSupportPage(direction) {
 
 // 初始化助力活动报表
 document.addEventListener('DOMContentLoaded', function() {
-    const supportSearchBtn = document.getElementById('supportSearchBtn');
-    const supportResetBtn = document.getElementById('supportResetBtn');
-    const supportClearBtn = document.getElementById('supportClearBtn');
-    const supportExportBtn = document.getElementById('supportExportBtn');
-    const supportViewExportsBtn = document.getElementById('supportViewExportsBtn');
-    
-    if (supportSearchBtn) {
-        supportSearchBtn.addEventListener('click', function() {
-            supportCurrentPage = 1;
-            loadSupportData();
-        });
     }
     
     if (supportResetBtn) {
         supportResetBtn.addEventListener('click', function() {
-            initSupportDates();
+            
             document.getElementById('supportActivityId').value = '';
         });
     }
     
-    if (supportClearBtn) {
-        supportClearBtn.addEventListener('click', function() {
-            document.getElementById('supportStartDate').value = '';
-            document.getElementById('supportEndDate').value = '';
-            document.getElementById('supportActivityId').value = '';
-        });
     }
     
     if (supportExportBtn) {
@@ -423,12 +366,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    if (supportViewExportsBtn) {
-        supportViewExportsBtn.addEventListener('click', function() {
-            alert('导出任务列表功能待实现');
-        });
     }
     
     // 初始化日期
-    initSupportDates();
+    
 });
